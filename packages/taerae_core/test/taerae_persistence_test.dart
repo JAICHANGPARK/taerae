@@ -1,7 +1,22 @@
+import 'dart:convert';
 import 'dart:io';
 
-import 'package:taerae_core/taerae_core.dart';
+import 'package:taerae/taerae.dart';
 import 'package:test/test.dart';
+
+Future<void> _writeLogWithTruncatedTrailingLine(File file) async {
+  final String first = jsonEncode(
+    TaeraeGraphOperation.upsertNode(TaeraeNode(id: 'n1')).toJson(),
+  );
+  final String second = jsonEncode(
+    TaeraeGraphOperation.upsertNode(TaeraeNode(id: 'n2')).toJson(),
+  );
+
+  await file.writeAsString(
+    '$first\n$second\n{"type":"upsertNode","node":{"id":"truncated"',
+    flush: true,
+  );
+}
 
 void main() {
   group('TaeraeGraphLog', () {
@@ -205,6 +220,53 @@ void main() {
   });
 
   group('TaeraePersistentGraph', () {
+    test(
+      'open recovers from valid operations with truncated trailing log line',
+      () async {
+        final Directory storeDir = await Directory.systemTemp.createTemp(
+          'taerae-open-truncated-',
+        );
+        addTearDown(() => storeDir.delete(recursive: true));
+
+        final File logFile = File(
+          storeDir.uri.resolve('graph.log.ndjson').toFilePath(),
+        );
+        await logFile.parent.create(recursive: true);
+        await _writeLogWithTruncatedTrailingLine(logFile);
+
+        final TaeraePersistentGraph graph = await TaeraePersistentGraph.open(
+          directory: storeDir,
+          autoCheckpointEvery: 0,
+        );
+
+        expect(graph.graph.containsNode('n1'), isTrue);
+        expect(graph.graph.containsNode('n2'), isTrue);
+        expect(graph.graph.containsNode('truncated'), isFalse);
+      },
+    );
+
+    test('strict open mode rejects truncated trailing log line', () async {
+      final Directory storeDir = await Directory.systemTemp.createTemp(
+        'taerae-open-truncated-strict-',
+      );
+      addTearDown(() => storeDir.delete(recursive: true));
+
+      final File logFile = File(
+        storeDir.uri.resolve('graph.log.ndjson').toFilePath(),
+      );
+      await logFile.parent.create(recursive: true);
+      await _writeLogWithTruncatedTrailingLine(logFile);
+
+      await expectLater(
+        TaeraePersistentGraph.open(
+          directory: storeDir,
+          autoCheckpointEvery: 0,
+          tolerateIncompleteTrailingLogLine: false,
+        ),
+        throwsFormatException,
+      );
+    });
+
     test('persists mutations and recovers from disk', () async {
       final Directory storeDir = await Directory.systemTemp.createTemp(
         'taerae-persistent-',
@@ -422,6 +484,65 @@ void main() {
       await graph.checkpoint();
       final String afterCheckpoint = await File(graph.logPath).readAsString();
       expect(afterCheckpoint.trim(), isEmpty);
+    });
+
+    test('close marks closed and rejects later mutating operations', () async {
+      final Directory storeDir = await Directory.systemTemp.createTemp(
+        'taerae-close-closed-',
+      );
+      addTearDown(() => storeDir.delete(recursive: true));
+
+      final TaeraePersistentGraph graph = await TaeraePersistentGraph.open(
+        directory: storeDir,
+        autoCheckpointEvery: 0,
+      );
+      await graph.upsertNode('n1');
+
+      await graph.close();
+      expect(graph.isClosed, isTrue);
+
+      await expectLater(graph.upsertNode('n2'), throwsStateError);
+      await expectLater(graph.removeNode('n1'), throwsStateError);
+      await expectLater(graph.removeEdge('missing'), throwsStateError);
+      await expectLater(graph.clear(), throwsStateError);
+      await expectLater(graph.checkpoint(), throwsStateError);
+      await expectLater(
+        graph.restoreFromJson(const <String, Object?>{
+          'nodes': <Object?>[],
+          'edges': <Object?>[],
+        }),
+        throwsStateError,
+      );
+    });
+
+    test('close without checkpoint flushes log data for reopen', () async {
+      final Directory storeDir = await Directory.systemTemp.createTemp(
+        'taerae-close-flush-',
+      );
+      addTearDown(() => storeDir.delete(recursive: true));
+
+      final TaeraePersistentGraph graph = await TaeraePersistentGraph.open(
+        directory: storeDir,
+        autoCheckpointEvery: 0,
+        durability: const TaeraeDurabilityOptions(
+          logFlushPolicy: TaeraeLogFlushPolicy.onCheckpoint,
+        ),
+      );
+
+      await graph.upsertNode('n1');
+      await graph.upsertNode('n2');
+      await graph.close(checkpointOnClose: false);
+
+      expect(graph.isClosed, isTrue);
+      final String persistedLog = await File(graph.logPath).readAsString();
+      expect(persistedLog.trim().isNotEmpty, isTrue);
+
+      final TaeraePersistentGraph reopened = await TaeraePersistentGraph.open(
+        directory: storeDir,
+        autoCheckpointEvery: 0,
+      );
+      expect(reopened.graph.containsNode('n1'), isTrue);
+      expect(reopened.graph.containsNode('n2'), isTrue);
     });
   });
 }

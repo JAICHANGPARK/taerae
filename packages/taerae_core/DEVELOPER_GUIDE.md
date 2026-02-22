@@ -1,6 +1,6 @@
-# taerae_core Developer Guide
+# taerae Developer Guide
 
-This guide is for engineers integrating `taerae_core` into production code.
+This guide is for engineers integrating `taerae` into production code.
 It focuses on API behavior, safe usage patterns, and operational trade-offs.
 
 ## Contents
@@ -18,7 +18,7 @@ It focuses on API behavior, safe usage patterns, and operational trade-offs.
 
 ## 1) Core concepts (node, edge, graph)
 
-`taerae_core` is centered on three immutable model types and one mutable engine.
+`taerae` is centered on three immutable model types and one mutable engine.
 
 - `TaeraeNode`: immutable node with `id`, `labels`, and `properties`.
 - `TaeraeEdge`: immutable directed edge with `id`, `from`, `to`, optional `type`, and `properties`.
@@ -27,7 +27,7 @@ It focuses on API behavior, safe usage patterns, and operational trade-offs.
 ### Node and edge are immutable value objects
 
 ```dart
-import 'package:taerae_core/taerae_core.dart';
+import 'package:taerae/taerae.dart';
 
 void main() {
   final TaeraeNode node = TaeraeNode(
@@ -53,7 +53,7 @@ Practical implication:
 ### The graph is directed and indexed
 
 ```dart
-import 'package:taerae_core/taerae_core.dart';
+import 'package:taerae/taerae.dart';
 
 void main() {
   final TaeraeGraph graph = TaeraeGraph()
@@ -331,7 +331,7 @@ Future<void> importPersistent(
 ```dart
 import 'dart:io';
 
-import 'package:taerae_core/taerae_core.dart';
+import 'package:taerae/taerae.dart';
 
 Future<void> main() async {
   final Directory storeDir = Directory('./taerae_store');
@@ -360,6 +360,7 @@ Future<void> main() async {
 
   // Explicit checkpoint for deterministic compaction boundaries.
   await persistent.checkpoint();
+  await persistent.close();
 
   print('Snapshot: ${persistent.snapshotPath}');
   print('Log: ${persistent.logPath}');
@@ -370,8 +371,12 @@ Operational notes:
 
 - `open` creates directory and files if they do not exist.
 - On startup, it reads snapshot then replays all log operations.
+- By default, `open` tolerates one crash-truncated trailing log line.
+  Set `tolerateIncompleteTrailingLogLine: false` for strict replay.
 - `checkpoint` flushes log, writes snapshot, truncates log.
-- There is no explicit `close` API. For shutdown safety, call `checkpoint`.
+- `close()` flushes persistence state and marks the instance closed.
+- `close(checkpointOnClose: false)` skips snapshot compaction but still flushes
+  pending log writes.
 
 ### Durability option reference
 
@@ -397,6 +402,10 @@ Operational notes:
 
 1. Read snapshot (`graph.snapshot.json`) or start empty.
 2. Replay log (`graph.log.ndjson`) in order.
+   - By default, a malformed trailing line is tolerated only when the file
+     ends without a newline (crash-truncated append case).
+   - Set `tolerateIncompleteTrailingLogLine: false` to reject malformed logs
+     strictly.
 3. Build ready-to-use in-memory graph.
 
 This means recent operations survive restart as long as they are present in log.
@@ -406,7 +415,7 @@ This means recent operations survive restart as long as they are present in log.
 Use both policy and event triggers:
 
 - Keep `autoCheckpointEvery` enabled for continuous compaction.
-- Call `checkpoint()` before app shutdown.
+- Call `close()` before app shutdown.
 - Call `checkpoint()` before backup/export operations.
 - Call `checkpoint()` after bulk imports.
 
@@ -461,7 +470,7 @@ Recommended only when:
 ```dart
 import 'dart:io';
 
-import 'package:taerae_core/taerae_core.dart';
+import 'package:taerae/taerae.dart';
 
 Future<TaeraePersistentGraph> openWithRecovery(Directory directory) async {
   try {
@@ -536,7 +545,7 @@ final TaeraeGraph graph = TaeraeGraph()
 ```dart
 import 'dart:math' as math;
 
-import 'package:taerae_core/taerae_core.dart';
+import 'package:taerae/taerae.dart';
 
 class DemoEmbedder implements TaeraeTextEmbedder {
   @override
@@ -790,7 +799,7 @@ Outputs:
 ### 1. Core invariants and CRUD behavior
 
 ```dart
-import 'package:taerae_core/taerae_core.dart';
+import 'package:taerae/taerae.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -825,7 +834,7 @@ test('graph JSON round-trip preserves structure', () {
 ```dart
 import 'dart:io';
 
-import 'package:taerae_core/taerae_core.dart';
+import 'package:taerae/taerae.dart';
 import 'package:test/test.dart';
 
 test('persistent graph recovers from snapshot + log replay', () async {

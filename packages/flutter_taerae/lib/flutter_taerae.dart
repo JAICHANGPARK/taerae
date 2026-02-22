@@ -1,10 +1,10 @@
 /// Flutter bindings for [TaeraeGraph]-based graph workflows.
 ///
-/// This library re-exports the core graph APIs from `taerae_core` and adds
+/// This library re-exports the core graph APIs from `taerae` and adds
 /// Flutter-friendly state management utilities such as [TaeraeGraphController].
 library;
 
-export 'package:taerae_core/taerae_core.dart';
+export 'package:taerae/taerae.dart';
 export 'src/taerae_graph_controller.dart';
 export 'src/visualizer/taerae_graph_view.dart';
 

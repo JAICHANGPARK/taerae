@@ -1,13 +1,13 @@
 # flutter_taerae
 
-Flutter package for using `taerae_core` graph APIs in Flutter apps.
+Flutter package for using `taerae` graph APIs in Flutter apps.
 
 `flutter_taerae` provides:
 
 - `TaeraeGraphController` (`ChangeNotifier`) for Flutter-friendly graph state.
 - `TaeraeGraphView` for in-app graph visualization with node/edge tap callbacks.
 - `TaeraeFlutter.getPlatformVersion()` for platform-channel smoke testing.
-- Re-exported `taerae_core` APIs (graph model/engine, persistence, GraphRAG).
+- Re-exported `taerae` APIs (graph model/engine, persistence, GraphRAG).
 
 ## Why this package
 
@@ -36,7 +36,7 @@ dependencies:
     path: ../packages/flutter_taerae
 
 dependency_overrides:
-  taerae_core:
+  taerae:
     path: ../packages/taerae_core
 ```
 
@@ -93,6 +93,8 @@ Reference implementation:
 
 - Example app with end-user CRUD/search UI:
   [`example/lib/main.dart`](example/lib/main.dart)
+- The example opens on a **Quick Start** tab with one-click graph actions.
+- Switch to **Advanced CRUD** tab for full manual node/edge editors.
 - Example widget test:
   [`example/test/widget_test.dart`](example/test/widget_test.dart)
 

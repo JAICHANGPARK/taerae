@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'dart:math';
 
-import 'package:taerae_core/taerae_core.dart';
+import 'package:taerae/taerae.dart';
 
 void main(List<String> args) {
   final BenchmarkConfig config;

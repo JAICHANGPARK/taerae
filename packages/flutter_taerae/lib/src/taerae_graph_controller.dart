@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
-import 'package:taerae_core/taerae_core.dart';
+import 'package:taerae/taerae.dart';
 
 /// ChangeNotifier-based controller for managing a [TaeraeGraph].
 class TaeraeGraphController extends ChangeNotifier {

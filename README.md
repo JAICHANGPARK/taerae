@@ -47,7 +47,7 @@ Taerae is optimized for app-embedded graph workloads, not server-cluster workloa
 ## Packages
 
 - `packages/taerae_core`: pure Dart graph engine and query core.
-- `packages/flutter_taerae`: Flutter plugin/package that wraps `taerae_core` with Flutter-friendly APIs.
+- `packages/flutter_taerae`: Flutter plugin/package that wraps `taerae` with Flutter-friendly APIs.
 - `examples/`: standalone example projects for common usage patterns.
 
 ## Documentation
@@ -133,6 +133,6 @@ Real-life scenario samples include:
 
 ## Pub.dev Publishing Plan
 
-1. Publish `taerae_core` first.
-2. Update `flutter_taerae` dependency from local path to the published `taerae_core` version.
+1. Publish `taerae` first.
+2. Update `flutter_taerae` dependency from local path to the published `taerae` version.
 3. Publish `flutter_taerae`.

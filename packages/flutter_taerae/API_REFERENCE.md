@@ -1,6 +1,6 @@
 # flutter_taerae API Reference
 
-Import once to access both Flutter-layer APIs and re-exported `taerae_core` APIs:
+Import once to access both Flutter-layer APIs and re-exported `taerae` APIs:
 
 ```dart
 import 'package:flutter_taerae/flutter_taerae.dart';
@@ -72,7 +72,7 @@ Flutter graph visualizer widget backed by `TaeraeGraphController`.
 
 - `typedef TaeraeGraphLayout = Map<String, Offset> Function(Size canvasSize, List<TaeraeNode> nodes, List<TaeraeEdge> edges, EdgeInsets padding, double nodeRadius)`
 
-## 2) Re-exported `taerae_core` APIs
+## 2) Re-exported `taerae` APIs
 
 ### Graph model and engine
 

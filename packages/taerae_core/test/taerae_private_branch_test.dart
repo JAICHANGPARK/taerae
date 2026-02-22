@@ -1,6 +1,6 @@
 import 'dart:mirrors';
 
-import 'package:taerae_core/taerae_core.dart';
+import 'package:taerae/taerae.dart';
 import 'package:test/test.dart';
 
 void main() {

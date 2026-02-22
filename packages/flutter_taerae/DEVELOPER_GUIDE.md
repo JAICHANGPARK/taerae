@@ -1,7 +1,7 @@
 # flutter_taerae Developer Guide
 
 This guide explains how to use `flutter_taerae` in production Flutter apps.
-It focuses on `TaeraeGraphController` usage patterns and how to integrate re-exported `taerae_core` features (persistence and GraphRAG).
+It focuses on `TaeraeGraphController` usage patterns and how to integrate re-exported `taerae` features (persistence and GraphRAG).
 
 ## Table of Contents
 
@@ -32,7 +32,7 @@ You get:
   - `TaeraeFlutter.getPlatformVersion()` for platform channel smoke tests.
 - Flutter state adapter:
   - `TaeraeGraphController` (`ChangeNotifier`) for UI-friendly graph reads/writes.
-- Re-exported `taerae_core` APIs:
+- Re-exported `taerae` APIs:
   - Graph model/engine (`TaeraeGraph`, `TaeraeNode`, `TaeraeEdge`)
   - Persistence (`TaeraePersistentGraph`, durability options, log/snapshot classes)
   - GraphRAG (`TaeraeGraphRag`, `TaeraeTextEmbedder`, `TaeraeVectorIndex`, etc.)
@@ -80,11 +80,11 @@ dependencies:
     path: ../packages/flutter_taerae
 
 dependency_overrides:
-  taerae_core:
+  taerae:
     path: ../packages/taerae_core
 ```
 
-If `flutter_taerae` is already path-based and its own `pubspec_overrides.yaml` resolves `taerae_core`, you can keep only the `flutter_taerae` path dependency in your app.
+If `flutter_taerae` is already path-based and its own `pubspec_overrides.yaml` resolves `taerae`, you can keep only the `flutter_taerae` path dependency in your app.
 Adjust relative paths to your app directory.
 
 ## 3. TaeraeGraphController lifecycle in Flutter widgets
@@ -499,7 +499,7 @@ class _GraphImportButtonState extends State<GraphImportButton> {
 
 ## 7. Persistence integration pattern
 
-`TaeraePersistentGraph` is re-exported from `taerae_core` and is the recommended durable storage layer for mobile/desktop/server Dart environments.
+`TaeraePersistentGraph` is re-exported from `taerae` and is the recommended durable storage layer for mobile/desktop/server Dart environments.
 
 Note:
 

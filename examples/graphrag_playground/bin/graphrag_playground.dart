@@ -1,4 +1,4 @@
-import 'package:taerae_core/taerae_core.dart';
+import 'package:taerae/taerae.dart';
 
 Future<void> main() async {
   final TaeraeGraph graph = TaeraeGraph()

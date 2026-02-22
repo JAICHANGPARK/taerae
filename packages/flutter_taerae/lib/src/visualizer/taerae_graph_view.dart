@@ -1,7 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:taerae_core/taerae_core.dart';
+import 'package:taerae/taerae.dart';
 
 import '../taerae_graph_controller.dart';
 

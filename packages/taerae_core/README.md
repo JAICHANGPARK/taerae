@@ -1,6 +1,6 @@
-# taerae_core
+# taerae
 
-`taerae_core` is an embedded graph database core for Dart.
+`taerae` is an embedded graph database core for Dart.
 It provides an in-memory graph engine, file-backed persistence, and GraphRAG integration points.
 
 ## Highlights
@@ -20,7 +20,7 @@ It provides an in-memory graph engine, file-backed persistence, and GraphRAG int
 ## Quick start
 
 ```dart
-import 'package:taerae_core/taerae_core.dart';
+import 'package:taerae/taerae.dart';
 
 void main() {
   final TaeraeGraph graph = TaeraeGraph()

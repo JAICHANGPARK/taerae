@@ -1,4 +1,4 @@
-import 'package:taerae_core/taerae_core.dart';
+import 'package:taerae/taerae.dart';
 
 void main() {
   final TaeraeGraph city = TaeraeGraph()
