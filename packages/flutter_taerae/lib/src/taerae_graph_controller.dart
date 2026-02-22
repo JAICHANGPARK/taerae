@@ -27,10 +27,10 @@ class TaeraeGraphController extends ChangeNotifier {
   /// Current edges sorted by id.
   List<TaeraeEdge> get edges => _readEdges(_graph.toJson());
 
-  /// Returns `true` when a node with [id] exists.
+  /// Whether a node with [id] exists.
   bool containsNode(String id) => _graph.containsNode(id);
 
-  /// Returns `true` when an edge with [id] exists.
+  /// Whether an edge with [id] exists.
   bool containsEdge(String id) => _graph.containsEdge(id);
 
   /// Returns a node by [id], or `null`.

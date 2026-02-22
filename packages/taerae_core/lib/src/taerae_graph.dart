@@ -178,10 +178,10 @@ class TaeraeGraph {
     return _removeEdgeInternal(id) != null;
   }
 
-  /// Returns `true` when a node with [id] exists.
+  /// Whether a node with [id] exists.
   bool containsNode(String id) => _nodes.containsKey(id);
 
-  /// Returns `true` when an edge with [id] exists.
+  /// Whether an edge with [id] exists.
   bool containsEdge(String id) => _edges.containsKey(id);
 
   /// Returns the node with [id] or `null`.

@@ -8,16 +8,17 @@ import 'package:web/web.dart' as web;
 
 import 'flutter_taerae_platform_interface.dart';
 
-/// A web implementation of the TaeraeFlutterPlatform of the TaeraeFlutter plugin.
+/// Web implementation of [TaeraeFlutterPlatform].
 class TaeraeFlutterWeb extends TaeraeFlutterPlatform {
-  /// Constructs a TaeraeFlutterWeb
+  /// Creates a web platform implementation.
   TaeraeFlutterWeb();
 
+  /// Registers this class as the active platform implementation.
   static void registerWith(Registrar registrar) {
     TaeraeFlutterPlatform.instance = TaeraeFlutterWeb();
   }
 
-  /// Returns a [String] containing the version of the platform.
+  /// The browser user-agent string for this runtime.
   @override
   Future<String?> getPlatformVersion() async {
     final version = web.window.navigator.userAgent;

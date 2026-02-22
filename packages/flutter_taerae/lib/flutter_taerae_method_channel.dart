@@ -9,6 +9,7 @@ class MethodChannelTaeraeFlutter extends TaeraeFlutterPlatform {
   @visibleForTesting
   final methodChannel = const MethodChannel('flutter_taerae');
 
+  /// Returns the version string from the native plugin implementation.
   @override
   Future<String?> getPlatformVersion() async {
     final version = await methodChannel.invokeMethod<String>(
