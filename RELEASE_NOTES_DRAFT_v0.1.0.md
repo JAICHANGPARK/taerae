@@ -11,7 +11,7 @@ It introduces:
 
 - core graph engine APIs (`taerae_core`)
 - file durability with append-only log + snapshot
-- Flutter-friendly controller API (`taerae_flutter`)
+- Flutter-friendly controller API (`flutter_taerae`)
 - GraphRAG extension interfaces
 - runnable real-world examples
 
@@ -71,7 +71,7 @@ It introduces:
 - `TaeraeGraphReranker`
 - `TaeraeGraphRagHit`
 
-## 3. Package: `taerae_flutter`
+## 3. Package: `flutter_taerae`
 
 ### Added
 
@@ -93,8 +93,8 @@ Added/updated documentation set:
 - `DEVELOPER_DOCS.md` (root docs index)
 - `PRD_BACKUP_2026-02-22.md`
 - `packages/taerae_core/DEVELOPER_GUIDE.md`
-- `packages/taerae_flutter/DEVELOPER_GUIDE.md`
-- `packages/taerae_flutter/API_REFERENCE.md`
+- `packages/flutter_taerae/DEVELOPER_GUIDE.md`
+- `packages/flutter_taerae/API_REFERENCE.md`
 - `examples/README.md`
 
 ## 5. Examples
@@ -115,7 +115,7 @@ Added/updated documentation set:
 - `taerae_core`
   - `dart analyze` passed
   - `dart test` passed
-- `taerae_flutter`
+- `flutter_taerae`
   - `flutter analyze` passed
   - `flutter test` passed
 - examples
@@ -135,15 +135,15 @@ Added/updated documentation set:
 ## 9. Publish Plan
 
 1. Publish `taerae_core` first.
-2. Update `taerae_flutter` core dependency to published version.
-3. Publish `taerae_flutter`.
+2. Update `flutter_taerae` core dependency to published version.
+3. Publish `flutter_taerae`.
 
 ## 10. Suggested Upgrade/Adoption Notes
 
 - New adopters:
   - start from `examples/basic_graph_queries` and `packages/taerae_core/DEVELOPER_GUIDE.md`
 - Flutter adopters:
-  - start from `packages/taerae_flutter/DEVELOPER_GUIDE.md`
+  - start from `packages/flutter_taerae/DEVELOPER_GUIDE.md`
   - wire persistence as a single source-of-truth service
 - GraphRAG adopters:
   - begin with deterministic embedder/index setup, then swap in production components

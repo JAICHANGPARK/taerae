@@ -742,6 +742,49 @@ Important:
 - Is checkpoint cadence preventing unbounded log growth?
 - Are embedding dimensions stable across model changes?
 
+### Reproducible benchmark
+
+Use the built-in benchmark script to validate scaling behavior as data grows.
+Pick a preset that matches your production access pattern.
+
+```bash
+dart run benchmark/graph_search_benchmark.dart \
+  --preset=social \
+  --sizes=10000,50000,100000
+```
+
+What it measures:
+
+- Build throughput: `upsertNode`, `upsertEdge`
+- Lookup/query speed: `nodeById`, `nodesByLabel`, `nodesWhereProperty`, `outgoing`
+- Traversal cost: shortest path and workload-specific traversal metrics
+
+Presets:
+
+- `generic`: balanced indexed graph workload
+- `social`: user recommendation style (`FOLLOWS`, `HAS_INTEREST`)
+- `delivery`: logistics routing style (`ROUTE`, `DELIVERS_TO`)
+- `notes_rag`: note graph + filter style (`RELATED`, `TAGGED_AS`)
+
+### Paper benchmark runner
+
+For publication-ready numbers, run repeated trials and report distribution
+metrics (`mean`, `stddev`, `p50`, `p95`) instead of a single run.
+
+```bash
+dart run benchmark/paper_benchmark.dart \
+  --presets=social,delivery,notes_rag \
+  --sizes=20000,100000 \
+  --warmup-runs=1 \
+  --repeat=5
+```
+
+Outputs:
+
+- `results.json`: raw per-run samples + aggregated stats
+- `summary.csv`: table-ready metrics for plotting and paper tables
+- `REPORT.md`: run metadata and quick summary
+
 ## 10) Testing patterns
 
 ### 1. Core invariants and CRUD behavior

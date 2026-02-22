@@ -18,14 +18,14 @@ Topics covered in the core guide:
 - GraphRAG integration (embedder/index/chunker/filter/reranker)
 - performance and testing patterns
 
-## Flutter Package (`taerae_flutter`)
+## Flutter Package (`flutter_taerae`)
 
 - Overview and quick start:
-  - `packages/taerae_flutter/README.md`
+  - `packages/flutter_taerae/README.md`
 - Detailed developer guide:
-  - `packages/taerae_flutter/DEVELOPER_GUIDE.md`
+  - `packages/flutter_taerae/DEVELOPER_GUIDE.md`
 - API inventory:
-  - `packages/taerae_flutter/API_REFERENCE.md`
+  - `packages/flutter_taerae/API_REFERENCE.md`
 
 Topics covered in the Flutter guide:
 - architecture and package layering
@@ -47,3 +47,40 @@ Real-life scenario examples:
 - `examples/real_life_delivery_ops`
 - `examples/real_life_personal_notes_rag`
 - `examples/real_life_social_recommendation`
+
+## Standard Checks and Learning Resources
+
+Run the standard monorepo checks from repository root:
+
+```bash
+./scripts/dev-checks.sh
+```
+
+Fast iteration mode:
+
+```bash
+./scripts/dev-checks.sh --skip-examples
+```
+
+Equivalent package-level commands:
+
+```bash
+cd packages/taerae_core
+dart analyze
+dart test
+
+cd ../flutter_taerae
+flutter analyze
+flutter test
+```
+
+Primary docs for learning and runnable flows:
+- Core package:
+  - `packages/taerae_core/README.md`
+  - `packages/taerae_core/DEVELOPER_GUIDE.md`
+- Flutter package:
+  - `packages/flutter_taerae/README.md`
+  - `packages/flutter_taerae/DEVELOPER_GUIDE.md`
+  - `packages/flutter_taerae/API_REFERENCE.md`
+- Examples:
+  - `examples/README.md`

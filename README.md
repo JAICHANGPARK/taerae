@@ -18,7 +18,7 @@ Extend naturally into on-device AI and GraphRAG workflows.
 ## Get Started
 
 - Build with pure Dart core: [`packages/taerae_core`](packages/taerae_core)
-- Build Flutter apps: [`packages/taerae_flutter`](packages/taerae_flutter)
+- Build Flutter apps: [`packages/flutter_taerae`](packages/flutter_taerae)
 - Run practical examples: [`examples`](examples)
 - Dive into full docs: [`DEVELOPER_DOCS.md`](DEVELOPER_DOCS.md)
 
@@ -47,15 +47,15 @@ Taerae is optimized for app-embedded graph workloads, not server-cluster workloa
 ## Packages
 
 - `packages/taerae_core`: pure Dart graph engine and query core.
-- `packages/taerae_flutter`: Flutter plugin/package that wraps `taerae_core` with Flutter-friendly APIs.
+- `packages/flutter_taerae`: Flutter plugin/package that wraps `taerae_core` with Flutter-friendly APIs.
 - `examples/`: standalone example projects for common usage patterns.
 
 ## Documentation
 
 - Detailed docs index: `DEVELOPER_DOCS.md`
 - Core guide: `packages/taerae_core/DEVELOPER_GUIDE.md`
-- Flutter guide: `packages/taerae_flutter/DEVELOPER_GUIDE.md`
-- Flutter API reference: `packages/taerae_flutter/API_REFERENCE.md`
+- Flutter guide: `packages/flutter_taerae/DEVELOPER_GUIDE.md`
+- Flutter API reference: `packages/flutter_taerae/API_REFERENCE.md`
 
 ## Vision
 
@@ -63,13 +63,56 @@ Taerae is optimized for app-embedded graph workloads, not server-cluster workloa
 - Expand toward on-device AI workflows and GraphRAG pipelines.
 - Keep the core lightweight so it can run in resource-constrained environments.
 
+## Setup and Prerequisites
+
+- Required toolchains:
+  - Dart SDK `>=3.11.0`
+  - Flutter SDK `>=3.3.0`
+- Verify local setup:
+
+```bash
+dart --version
+flutter --version
+flutter doctor
+```
+
+- Bootstrap dependencies:
+
+```bash
+cd packages/taerae_core
+dart pub get
+
+cd ../flutter_taerae
+flutter pub get
+
+for dir in ../../examples/*; do
+  (cd "$dir" && dart pub get)
+done
+```
+
+See `examples/README.md` for a complete example list and runnable scenarios.
+
 ## Local Development
+
+Standard local checks from repository root:
+
+```bash
+./scripts/dev-checks.sh
+```
+
+Fast loop (skip example dependency bootstrap):
+
+```bash
+./scripts/dev-checks.sh --skip-examples
+```
+
+Equivalent manual commands:
 
 ```bash
 cd packages/taerae_core
 dart test
 
-cd ../taerae_flutter
+cd ../flutter_taerae
 flutter test
 ```
 
@@ -91,5 +134,5 @@ Real-life scenario samples include:
 ## Pub.dev Publishing Plan
 
 1. Publish `taerae_core` first.
-2. Update `taerae_flutter` dependency from local path to the published `taerae_core` version.
-3. Publish `taerae_flutter`.
+2. Update `flutter_taerae` dependency from local path to the published `taerae_core` version.
+3. Publish `flutter_taerae`.

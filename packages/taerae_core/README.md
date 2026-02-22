@@ -39,3 +39,52 @@ void main() {
   Detailed usage guide covering CRUD, traversal, JSON import/export,
   persistence durability, recovery strategy, GraphRAG workflows,
   defensive coding, performance, and testing patterns.
+
+## Benchmark
+
+Measure core performance for larger datasets with the bundled benchmark script.
+
+```bash
+dart run benchmark/graph_search_benchmark.dart --preset=generic
+```
+
+Workload presets:
+
+- `generic`: balanced indexed graph workload.
+- `social`: user follow/recommendation pattern (`FOLLOWS`, `HAS_INTEREST`).
+- `delivery`: route + package tracking pattern (`ROUTE`, `DELIVERS_TO`).
+- `notes_rag`: note-link + filter-heavy pattern (`RELATED`, `TAGGED_AS`).
+
+Example runs:
+
+```bash
+dart run benchmark/graph_search_benchmark.dart \
+  --preset=social \
+  --sizes=20000,100000 \
+  --path-queries=300
+
+dart run benchmark/graph_search_benchmark.dart \
+  --preset=delivery \
+  --sizes=20000 \
+  --path-queries=500
+```
+
+The benchmark reports build throughput (`upsertNode`, `upsertEdge`) and search
+performance (label/property lookup, adjacency traversal, and shortest-path style
+queries) for each dataset size.
+
+For paper-grade reporting (repeated runs + statistics), use the runner:
+
+```bash
+dart run benchmark/paper_benchmark.dart \
+  --presets=social,delivery,notes_rag \
+  --sizes=20000,100000 \
+  --warmup-runs=1 \
+  --repeat=5
+```
+
+It writes:
+
+- `benchmark/results/<timestamp>/results.json`
+- `benchmark/results/<timestamp>/summary.csv`
+- `benchmark/results/<timestamp>/REPORT.md`

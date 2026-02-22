@@ -5,7 +5,7 @@
 - 문서명: `Taerae PRD Backup`
 - 작성일: 2026-02-22
 - 목적: 현재 구현 상태를 제품/개발 기준으로 백업하고, 이후 릴리즈 및 확장 작업의 기준선으로 사용
-- 범위: `taerae_core`, `taerae_flutter`, 예제 프로젝트, 문서 체계
+- 범위: `taerae_core`, `flutter_taerae`, 예제 프로젝트, 문서 체계
 
 ## 2. 제품 정의
 
@@ -59,7 +59,7 @@
 
 ### 4.1 패키지 구조
 - `packages/taerae_core`: 순수 Dart 그래프 엔진/영속성/GraphRAG
-- `packages/taerae_flutter`: Flutter 패키지 + `ChangeNotifier` 컨트롤러 + 코어 re-export
+- `packages/flutter_taerae`: Flutter 패키지 + `ChangeNotifier` 컨트롤러 + 코어 re-export
 - `examples/`: 독립 실행 예제 모음
 
 ### 4.2 레이어 모델
@@ -125,22 +125,22 @@
 - GraphRAG: `TaeraeGraphRag`, `TaeraeTextEmbedder`, `TaeraeVectorIndex`, `TaeraeGraphRagFilter`, `TaeraeGraphReranker` 등
 
 ### 6.3 상세 레퍼런스 문서
-- `packages/taerae_flutter/API_REFERENCE.md`
+- `packages/flutter_taerae/API_REFERENCE.md`
 
 ## 7. 문서 체계
 
 - 루트 문서: `README.md`
 - 문서 인덱스: `DEVELOPER_DOCS.md`
 - 코어 상세 가이드: `packages/taerae_core/DEVELOPER_GUIDE.md`
-- 플러그인 상세 가이드: `packages/taerae_flutter/DEVELOPER_GUIDE.md`
-- 플러그인 API 레퍼런스: `packages/taerae_flutter/API_REFERENCE.md`
+- 플러그인 상세 가이드: `packages/flutter_taerae/DEVELOPER_GUIDE.md`
+- 플러그인 API 레퍼런스: `packages/flutter_taerae/API_REFERENCE.md`
 - 예제 인덱스: `examples/README.md`
 
 ## 8. 품질 검증 상태
 
 ### 8.1 정적 분석/테스트
 - `taerae_core`: `dart analyze`, `dart test` 통과
-- `taerae_flutter`: `flutter analyze`, `flutter test` 통과
+- `flutter_taerae`: `flutter analyze`, `flutter test` 통과
 
 ### 8.2 예제 실행 검증
 - 실전 예제 포함 다수 `dart run` 실행 검증 완료
@@ -148,8 +148,8 @@
 ## 9. 배포 전략 (pub.dev)
 
 1. `taerae_core` 먼저 배포
-2. `taerae_flutter`에서 core 의존성 버전 고정/반영
-3. `taerae_flutter` 배포
+2. `flutter_taerae`에서 core 의존성 버전 고정/반영
+3. `flutter_taerae` 배포
 
 ## 10. 향후 로드맵 (제안)
 
