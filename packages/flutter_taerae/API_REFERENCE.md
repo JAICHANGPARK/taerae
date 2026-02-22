@@ -55,6 +55,23 @@ Flutter state-friendly graph controller.
 - `void importFromJson(Map<String, Object?> json)`
 - `void importFromJsonString(String source)`
 
+### `class TaeraeGraphView extends StatelessWidget`
+
+Flutter graph visualizer widget backed by `TaeraeGraphController`.
+
+#### Constructor (selected)
+
+- `TaeraeGraphView({required TaeraeGraphController controller, TaeraeGraphLayout? layout, TaeraeGraphNodeTapCallback? onNodeTap, TaeraeGraphEdgeTapCallback? onEdgeTap, ...})`
+
+#### Callback typedefs
+
+- `typedef TaeraeGraphNodeTapCallback = void Function(TaeraeNode node)`
+- `typedef TaeraeGraphEdgeTapCallback = void Function(TaeraeEdge edge)`
+
+#### Layout typedef
+
+- `typedef TaeraeGraphLayout = Map<String, Offset> Function(Size canvasSize, List<TaeraeNode> nodes, List<TaeraeEdge> edges, EdgeInsets padding, double nodeRadius)`
+
 ## 2) Re-exported `taerae_core` APIs
 
 ### Graph model and engine

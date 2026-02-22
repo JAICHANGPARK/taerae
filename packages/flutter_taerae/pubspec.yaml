@@ -1,6 +1,6 @@
 name: flutter_taerae
 description: "Local-first embedded graph package for Flutter with ChangeNotifier state APIs, durability controls, and GraphRAG-ready extensions."
-version: 0.1.1
+version: 0.2.0
 homepage: https://github.com/taerae-dev/taerae
 repository: https://github.com/taerae-dev/taerae
 issue_tracker: https://github.com/taerae-dev/taerae/issues

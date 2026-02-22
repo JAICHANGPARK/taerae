@@ -6,6 +6,7 @@ library;
 
 export 'package:taerae_core/taerae_core.dart';
 export 'src/taerae_graph_controller.dart';
+export 'src/visualizer/taerae_graph_view.dart';
 
 import 'flutter_taerae_platform_interface.dart';
 

@@ -5,6 +5,7 @@ Flutter package for using `taerae_core` graph APIs in Flutter apps.
 `flutter_taerae` provides:
 
 - `TaeraeGraphController` (`ChangeNotifier`) for Flutter-friendly graph state.
+- `TaeraeGraphView` for in-app graph visualization with node/edge tap callbacks.
 - `TaeraeFlutter.getPlatformVersion()` for platform-channel smoke testing.
 - Re-exported `taerae_core` APIs (graph model/engine, persistence, GraphRAG).
 
@@ -24,7 +25,7 @@ Flutter package for using `taerae_core` graph APIs in Flutter apps.
 
 ```yaml
 dependencies:
-  flutter_taerae: ^0.1.0
+  flutter_taerae: ^0.2.0
 ```
 
 Local monorepo override example:
@@ -57,6 +58,17 @@ controller
   ..upsertEdge('e1', 'n1', 'n2', type: 'KNOWS');
 
 final List<String>? path = controller.shortestPathBfs('n1', 'n2');
+
+Widget build(BuildContext context) {
+  return SizedBox(
+    height: 320,
+    child: TaeraeGraphView(
+      controller: controller,
+      onNodeTap: (TaeraeNode node) => debugPrint('node=${node.id}'),
+      onEdgeTap: (TaeraeEdge edge) => debugPrint('edge=${edge.id}'),
+    ),
+  );
+}
 ```
 
 ## Practical CRUD Flow (Flutter App)

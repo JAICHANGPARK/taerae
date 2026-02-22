@@ -7,6 +7,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Taerae CRUD Example'), findsOneWidget);
+    expect(find.text('Graph Visualizer'), findsOneWidget);
     expect(find.text('Node CRUD'), findsOneWidget);
     expect(find.text('Node Search'), findsOneWidget);
     expect(find.text('Edge CRUD'), findsOneWidget);

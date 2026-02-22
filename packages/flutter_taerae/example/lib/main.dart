@@ -522,6 +522,25 @@ class _GraphCrudHomePageState extends State<GraphCrudHomePage> {
     );
   }
 
+  Widget _buildVisualizer() {
+    return _SectionCard(
+      title: 'Graph Visualizer',
+      description:
+          'Pan and zoom the canvas. Tap nodes or edges to load them into editors.',
+      child: SizedBox(
+        height: 360,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: TaeraeGraphView(
+            controller: _controller,
+            onNodeTap: _loadNodeToEditor,
+            onEdgeTap: _loadEdgeToEditor,
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildNodeCrud() {
     return _SectionCard(
       title: 'Node CRUD',
@@ -852,6 +871,7 @@ class _GraphCrudHomePageState extends State<GraphCrudHomePage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
                 _buildOverview(nodes, edges),
+                _buildVisualizer(),
                 _buildNodeCrud(),
                 _buildSearchPanel(),
                 _buildEdgeCrud(),
