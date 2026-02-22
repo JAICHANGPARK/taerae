@@ -1,3 +1,14 @@
+## 0.1.2
+
+- Add tolerant replay mode for crash-truncated trailing log lines in
+  `TaeraeGraphLog.replayInto(...)` while keeping strict replay available.
+- Update `TaeraePersistentGraph.open(...)` to enable tolerant trailing-line
+  recovery by default with an explicit strict-mode toggle.
+- Add `TaeraePersistentGraph.close(...)` and `isClosed`, and reject mutating
+  persistence calls after close with `StateError`.
+- Add persistence regression tests for truncated-log recovery modes and close
+  lifecycle behavior.
+
 ## 0.1.1
 
 - Optimize `TaeraeGraphLog` replay/read paths to stream NDJSON operations.

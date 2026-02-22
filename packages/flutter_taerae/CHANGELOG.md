@@ -1,3 +1,10 @@
+## 0.2.1
+
+- Redesign example app with two modes: `Quick Start` and `Advanced CRUD`.
+- Add one-click node templates and quick edge creation in the example app.
+- Add starter graph reset and JSON copy actions for easier onboarding.
+- Update example widget tests to cover the new tabbed flow.
+
 ## 0.2.0
 
 - Add `TaeraeGraphView` for visual graph rendering in Flutter apps.

@@ -1,0 +1,103 @@
+\relax 
+\providecommand\hyper@newdestlabel[2]{}
+\providecommand\HyperFirstAtBeginDocument{\AtBeginDocument}
+\HyperFirstAtBeginDocument{\ifx\hyper@anchor\@undefined
+\global\let\oldcontentsline\contentsline
+\gdef\contentsline#1#2#3#4{\oldcontentsline{#1}{#2}{#3}}
+\global\let\oldnewlabel\newlabel
+\gdef\newlabel#1#2{\newlabelxx{#1}#2}
+\gdef\newlabelxx#1#2#3#4#5#6{\oldnewlabel{#1}{{#2}{#3}}}
+\AtEndDocument{\ifx\hyper@anchor\@undefined
+\let\contentsline\oldcontentsline
+\let\newlabel\oldnewlabel
+\fi}
+\fi}
+\global\let\hyper@last\relax 
+\gdef\HyperFirstAtBeginDocument#1{#1}
+\providecommand*\HyPL@Entry[1]{}
+\citation{taerae_repo}
+\citation{dart_docs}
+\citation{flutter_docs}
+\citation{mohan1992aries}
+\citation{lewis2020retrieval}
+\HyPL@Entry{0<</S/D>>}
+\@writefile{toc}{\contentsline {section}{\numberline {1}Introduction}{1}{section.1}\protected@file@percent }
+\citation{mohan1992aries}
+\citation{lewis2020retrieval}
+\citation{he2023rethinking}
+\citation{gao2023rag_survey}
+\citation{sarthi2024raptor}
+\citation{es2023ragas}
+\citation{edge2024graphrag}
+\citation{he2024gretriever}
+\citation{gutierrez2024hipporag}
+\citation{guo2024lightrag}
+\citation{chen2025pathrag}
+\citation{li2024structrag}
+\citation{zhang2024gor}
+\citation{luo2023rog}
+\citation{pan2023integrating_graphs_llms}
+\@writefile{toc}{\contentsline {section}{\numberline {2}Related Work and Positioning}{2}{section.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {3}System Design}{2}{section.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.1}Repository-Level Architecture}{2}{subsection.3.1}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces High-level runtime data flow in the current architecture.}}{3}{figure.1}\protected@file@percent }
+\newlabel{fig:runtime-architecture}{{1}{3}{High-level runtime data flow in the current architecture}{figure.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.2}Data and State Model}{3}{subsection.3.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.3}Persistence and Recovery Layout}{4}{subsection.3.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {4}Core Algorithms}{4}{section.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.1}Graph Mutation and Index Maintenance}{4}{subsection.4.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.2}Traversal and Path Search}{4}{subsection.4.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.3}Property Equality Semantics}{4}{subsection.4.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.4}GraphRAG Retrieval Pipeline}{5}{subsection.4.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.5}Vector Similarity Baseline}{5}{subsection.4.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.6}Complexity Summary}{5}{subsection.4.6}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Algorithmic profile derived from source-level implementation.}}{5}{table.1}\protected@file@percent }
+\newlabel{tab:complexity}{{1}{5}{Algorithmic profile derived from source-level implementation}{table.1}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {5}Durability \& Recovery}{6}{section.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.1}Threat Model and Non-Goals}{6}{subsection.5.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.2}Operation Logging}{6}{subsection.5.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.3}Durability Policy Controls}{6}{subsection.5.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.4}Checkpoint and Close Semantics}{6}{subsection.5.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.5}Evidence from Tests}{7}{subsection.5.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {6}Flutter Integration}{7}{section.6}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.1}Controller Layer}{7}{subsection.6.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.2}Visualization Layer}{7}{subsection.6.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.3}Platform Plugin Surface}{7}{subsection.6.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {7}Evaluation}{8}{section.7}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.1}Evaluation Goals and Setup}{8}{subsection.7.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.2}Benchmark Methodology}{8}{subsection.7.2}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Benchmark data pipeline used for reproducible artifact generation.}}{9}{figure.2}\protected@file@percent }
+\newlabel{fig:benchmark-pipeline}{{2}{9}{Benchmark data pipeline used for reproducible artifact generation}{figure.2}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Mean throughput (ops/s) at 5k nodes. Path-query metric is preset-specific shortest-path search.}}{9}{table.2}\protected@file@percent }
+\newlabel{tab:bench-5000}{{2}{9}{Mean throughput (ops/s) at 5k nodes. Path-query metric is preset-specific shortest-path search}{table.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.3}Benchmark Results}{9}{subsection.7.3}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces Scaling summary. \texttt  {ratio} is nodeById(10k)/nodeById(1k). \texttt  {shortest ratio} is shortest-path(10k)/shortest-path(1k).}}{9}{table.3}\protected@file@percent }
+\newlabel{tab:scaling}{{3}{9}{Scaling summary. \texttt {ratio} is nodeById(10k)/nodeById(1k). \texttt {shortest ratio} is shortest-path(10k)/shortest-path(1k)}{table.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.4}Test Suite and Coverage Evidence}{10}{subsection.7.4}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {4}{\ignorespaces Line coverage from local \texttt  {lcov.info} artifacts generated in this run.}}{10}{table.4}\protected@file@percent }
+\newlabel{tab:coverage-package}{{4}{10}{Line coverage from local \texttt {lcov.info} artifacts generated in this run}{table.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.5}Artifact Inventory and Reproducibility}{10}{subsection.7.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {8}Limitations}{11}{section.8}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {9}Future Work}{11}{section.9}\protected@file@percent }
+\bibstyle{plain}
+\bibdata{references}
+\bibcite{chen2025pathrag}{1}
+\bibcite{dart_docs}{2}
+\bibcite{edge2024graphrag}{3}
+\bibcite{es2023ragas}{4}
+\bibcite{flutter_docs}{5}
+\bibcite{gao2023rag_survey}{6}
+\@writefile{toc}{\contentsline {section}{\numberline {10}Conclusion}{12}{section.10}\protected@file@percent }
+\bibcite{guo2024lightrag}{7}
+\bibcite{gutierrez2024hipporag}{8}
+\bibcite{he2023rethinking}{9}
+\bibcite{he2024gretriever}{10}
+\bibcite{lewis2020retrieval}{11}
+\bibcite{li2024structrag}{12}
+\bibcite{luo2023rog}{13}
+\bibcite{mohan1992aries}{14}
+\bibcite{pan2023integrating_graphs_llms}{15}
+\bibcite{sarthi2024raptor}{16}
+\bibcite{taerae_repo}{17}
+\bibcite{zhang2024gor}{18}
+\gdef \@abspage@last{14}

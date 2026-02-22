@@ -1,0 +1,124 @@
+\begin{thebibliography}{10}
+
+\bibitem{chen2025pathrag}
+Weijie Chen et~al.
+\newblock Pathrag: Pruning graph-based retrieval augmented generation with
+  relational paths.
+\newblock {\em arXiv preprint}, 2025.
+\newblock arXiv:2502.14902.
+
+\bibitem{dart_docs}
+{Dart Team}.
+\newblock Dart documentation.
+\newblock \url{https://dart.dev/}, 2026.
+\newblock Accessed: 2026-02-22.
+
+\bibitem{edge2024graphrag}
+Darren Edge, Ha~Trinh, Newman Cheng, Joshua Bradley, Alex Chao, Apurva Mody,
+  Steven Truitt, and Jon Larson.
+\newblock From local to global: A graphrag approach to query-focused
+  summarization.
+\newblock {\em arXiv preprint}, 2024.
+\newblock arXiv:2404.16130.
+
+\bibitem{es2023ragas}
+Shahul Es, Jithin James, Luis Espinosa-Anke, and Steven Schockaert.
+\newblock Ragas: Automated evaluation of retrieval augmented generation.
+\newblock {\em arXiv preprint}, 2023.
+\newblock arXiv:2309.15217.
+
+\bibitem{flutter_docs}
+{Flutter Team}.
+\newblock Flutter documentation.
+\newblock \url{https://docs.flutter.dev/}, 2026.
+\newblock Accessed: 2026-02-22.
+
+\bibitem{gao2023rag_survey}
+Yunfan Gao et~al.
+\newblock Retrieval-augmented generation for large language models: A survey.
+\newblock {\em arXiv preprint}, 2023.
+\newblock arXiv:2312.10997.
+
+\bibitem{guo2024lightrag}
+Zirui Guo et~al.
+\newblock Lightrag: Simple and fast retrieval-augmented generation.
+\newblock {\em arXiv preprint}, 2024.
+\newblock arXiv:2410.05779.
+
+\bibitem{gutierrez2024hipporag}
+Bernal~Jimenez Gutierrez, Yiheng Shu, Yu~Gu, Michihiro Yasunaga, and Yu~Su.
+\newblock Hipporag: Neurobiologically inspired long-term memory for large
+  language models.
+\newblock {\em arXiv preprint}, 2024.
+\newblock arXiv:2405.14831.
+
+\bibitem{he2023rethinking}
+Hangfeng He, Hongming Zhang, and Dan Roth.
+\newblock Rethinking with retrieval: Faithful large language model inference.
+\newblock {\em arXiv preprint}, 2023.
+\newblock arXiv:2301.00303.
+
+\bibitem{he2024gretriever}
+Zhitao He et~al.
+\newblock G-retriever: Retrieval-augmented generation for textual graph
+  understanding and question answering.
+\newblock {\em arXiv preprint}, 2024.
+\newblock arXiv:2402.07630.
+
+\bibitem{lewis2020retrieval}
+Patrick Lewis, Ethan Perez, Aleksandra Piktus, Fabio Petroni, Vladimir
+  Karpukhin, Naman Goyal, Heinrich K{\"u}ttler, Mike Lewis, Wen-tau Yih, Tim
+  Rockt{\"a}schel, Sebastian Riedel, and Douwe Kiela.
+\newblock Retrieval-augmented generation for knowledge-intensive nlp tasks.
+\newblock In {\em Advances in Neural Information Processing Systems},
+  volume~33, pages 9459--9474, 2020.
+
+\bibitem{li2024structrag}
+Zhuo Li, Yikai Wang, Xi~Yang, Qiang Wang, Fang Chao, Yikang Li, Hanghang Wang,
+  Peng Zhang, Senzhang Wang, and Xifeng Yan.
+\newblock Structrag: Boosting large language model reasoning by inference-time
+  hybrid information structurization.
+\newblock {\em arXiv preprint}, 2024.
+\newblock arXiv:2410.08815.
+
+\bibitem{luo2023rog}
+Linhao Luo, Xin Sun, Yufei Wang, Fei Wang, Hao Zhao, Wei Chen, and Kun Zhang.
+\newblock Reasoning on graphs: Faithful and interpretable large language model
+  reasoning.
+\newblock {\em arXiv preprint}, 2023.
+\newblock arXiv:2310.01061.
+
+\bibitem{mohan1992aries}
+C.~Mohan, Don Haderle, Bruce Lindsay, Hamid Pirahesh, and Peter Schwarz.
+\newblock Aries: A transaction recovery method supporting fine-granularity
+  locking and partial rollbacks using write-ahead logging.
+\newblock {\em ACM Transactions on Database Systems}, 17(1):94--162, 1992.
+
+\bibitem{pan2023integrating_graphs_llms}
+Shirui Pan, Linhao Luo, Yufei Wang, Chenyu Chen, Jiarui Wang, and Xue Wu.
+\newblock Integrating graphs with large language models: Methods and prospects.
+\newblock {\em arXiv preprint}, 2023.
+\newblock arXiv:2310.05499.
+
+\bibitem{sarthi2024raptor}
+Parth Sarthi, Salman Abdullah, Arnav Tuli, Shubh Khanna, Micah Goldblum, Alan
+  Hanjalic, Radu Soricut, and Animesh Rawat.
+\newblock Raptor: Recursive abstractive processing for tree-organized
+  retrieval.
+\newblock {\em arXiv preprint}, 2024.
+\newblock arXiv:2401.18059.
+
+\bibitem{taerae_repo}
+{taerae contributors}.
+\newblock taerae: Embedded graph runtime for dart and flutter.
+\newblock \url{https://github.com/taerae-dev/taerae}, 2026.
+\newblock Accessed: 2026-02-22.
+
+\bibitem{zhang2024gor}
+Haozhen Zhang, Tao Feng, and Jiaxuan You.
+\newblock Gor: Unified graph-oriented retrieval for finding supporting evidence
+  for claims.
+\newblock {\em arXiv preprint}, 2024.
+\newblock arXiv:2410.11001.
+
+\end{thebibliography}

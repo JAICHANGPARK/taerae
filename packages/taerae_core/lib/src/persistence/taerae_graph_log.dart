@@ -40,9 +40,18 @@ class TaeraeGraphLog {
   }
 
   /// Replays all operations into [graph] and returns replayed operation count.
-  Future<int> replayInto(TaeraeGraph graph) async {
+  ///
+  /// When [tolerateIncompleteTrailingLine] is `true`, a malformed final line is
+  /// ignored only when the file does not end with a line terminator. This is
+  /// useful for crash-truncated appends.
+  Future<int> replayInto(
+    TaeraeGraph graph, {
+    bool tolerateIncompleteTrailingLine = false,
+  }) async {
     int replayedCount = 0;
-    await for (final TaeraeGraphOperation operation in _operationStream()) {
+    await for (final TaeraeGraphOperation operation in _operationStream(
+      tolerateIncompleteTrailingLine: tolerateIncompleteTrailingLine,
+    )) {
       operation.applyTo(graph);
       replayedCount += 1;
     }
@@ -66,29 +75,96 @@ class TaeraeGraphLog {
     }
   }
 
-  Stream<TaeraeGraphOperation> _operationStream() async* {
+  Stream<TaeraeGraphOperation> _operationStream({
+    bool tolerateIncompleteTrailingLine = false,
+  }) async* {
     if (!await file.exists()) {
       return;
     }
 
+    final bool endsWithLineTerminator = await _endsWithLineTerminator();
     final Stream<String> lines = file
         .openRead()
         .transform(utf8.decoder)
         .transform(const LineSplitter());
 
     int lineNumber = 0;
+    String? pendingLine;
+    int pendingLineNumber = 0;
     await for (final String rawLine in lines) {
       lineNumber += 1;
-      final String line = rawLine.trim();
-      if (line.isEmpty) {
-        continue;
+      if (pendingLine != null) {
+        final TaeraeGraphOperation? operation = _parseOperationLine(
+          pendingLine,
+          lineNumber: pendingLineNumber,
+        );
+        if (operation != null) {
+          yield operation;
+        }
       }
 
-      final Object? decoded = jsonDecode(line);
-      yield TaeraeGraphOperation.fromJson(
-        _readJsonMap(decoded, 'log line $lineNumber'),
-      );
+      pendingLine = rawLine;
+      pendingLineNumber = lineNumber;
     }
+
+    if (pendingLine == null) {
+      return;
+    }
+
+    final TaeraeGraphOperation? trailingOperation = _parseOperationLine(
+      pendingLine,
+      lineNumber: pendingLineNumber,
+      tolerateMalformedTrailingLine:
+          tolerateIncompleteTrailingLine && !endsWithLineTerminator,
+    );
+    if (trailingOperation != null) {
+      yield trailingOperation;
+    }
+  }
+
+  Future<bool> _endsWithLineTerminator() async {
+    final int length = await file.length();
+    if (length == 0) {
+      return true;
+    }
+
+    final RandomAccessFile handle = await file.open(mode: FileMode.read);
+    try {
+      await handle.setPosition(length - 1);
+      final List<int> lastByte = await handle.read(1);
+      if (lastByte.isEmpty) {
+        return true;
+      }
+      final int codeUnit = lastByte.first;
+      return codeUnit == 0x0A || codeUnit == 0x0D;
+    } finally {
+      await handle.close();
+    }
+  }
+
+  TaeraeGraphOperation? _parseOperationLine(
+    String rawLine, {
+    required int lineNumber,
+    bool tolerateMalformedTrailingLine = false,
+  }) {
+    final String line = rawLine.trim();
+    if (line.isEmpty) {
+      return null;
+    }
+
+    final Object? decoded;
+    try {
+      decoded = jsonDecode(line);
+    } on FormatException {
+      if (tolerateMalformedTrailingLine) {
+        return null;
+      }
+      rethrow;
+    }
+
+    return TaeraeGraphOperation.fromJson(
+      _readJsonMap(decoded, 'log line $lineNumber'),
+    );
   }
 
   static Map<String, Object?> _readJsonMap(Object? value, String fieldName) {

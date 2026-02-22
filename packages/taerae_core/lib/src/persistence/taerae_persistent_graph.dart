@@ -70,11 +70,16 @@ class TaeraePersistentGraph {
        _operationsSinceFlush = operationsSinceFlush;
 
   /// Opens or creates a persistent graph in [directory].
+  ///
+  /// When [tolerateIncompleteTrailingLogLine] is `true`, recovery ignores a
+  /// malformed final log line if the file ends without a newline. This helps
+  /// recover from crash-truncated appends.
   static Future<TaeraePersistentGraph> open({
     required Directory directory,
     String snapshotFileName = 'graph.snapshot.json',
     String logFileName = 'graph.log.ndjson',
     int autoCheckpointEvery = 200,
+    bool tolerateIncompleteTrailingLogLine = true,
     TaeraeDurabilityOptions durability = const TaeraeDurabilityOptions(),
   }) async {
     if (autoCheckpointEvery < 0) {
@@ -100,7 +105,10 @@ class TaeraePersistentGraph {
     await log.ensureExists();
 
     final TaeraeGraph graph = await snapshotStore.readOrEmpty();
-    final int replayedCount = await log.replayInto(graph);
+    final int replayedCount = await log.replayInto(
+      graph,
+      tolerateIncompleteTrailingLine: tolerateIncompleteTrailingLogLine,
+    );
 
     return TaeraePersistentGraph._(
       directory: directory,
@@ -126,6 +134,10 @@ class TaeraePersistentGraph {
   TaeraeGraph _graph;
   int _pendingOperationCount;
   int _operationsSinceFlush;
+  bool _isClosed = false;
+
+  /// Whether [close] has been called successfully.
+  bool get isClosed => _isClosed;
 
   /// Returns a defensive copy of the current in-memory graph state.
   TaeraeGraph get graph => _graph.copy();
@@ -142,6 +154,7 @@ class TaeraePersistentGraph {
     Iterable<String>? labels,
     Map<String, Object?>? properties,
   }) async {
+    _throwIfClosed();
     final TaeraeNode? existingNode = _graph.nodeById(id);
     final TaeraeNode nextNode = TaeraeNode(
       id: id,
@@ -165,6 +178,7 @@ class TaeraePersistentGraph {
 
   /// Removes a node and persists the operation.
   Future<bool> removeNode(String id) async {
+    _throwIfClosed();
     final TaeraeGraph probe = _graph.copy();
     final bool removed = probe.removeNode(id);
     if (!removed) {
@@ -186,6 +200,7 @@ class TaeraePersistentGraph {
     String? type,
     Map<String, Object?>? properties,
   }) async {
+    _throwIfClosed();
     if (!_graph.containsNode(from)) {
       throw StateError(
         'Cannot upsert edge "$id": source node "$from" does not exist.',
@@ -224,6 +239,7 @@ class TaeraePersistentGraph {
 
   /// Removes an edge and persists the operation.
   Future<bool> removeEdge(String id) async {
+    _throwIfClosed();
     final TaeraeGraph probe = _graph.copy();
     final bool removed = probe.removeEdge(id);
     if (!removed) {
@@ -239,6 +255,7 @@ class TaeraePersistentGraph {
 
   /// Clears all graph data and persists the operation.
   Future<void> clear() async {
+    _throwIfClosed();
     if (_isEmptyGraph()) {
       return;
     }
@@ -250,6 +267,7 @@ class TaeraePersistentGraph {
 
   /// Writes a full snapshot and truncates the append-only log.
   Future<void> checkpoint() async {
+    _throwIfClosed();
     await _log.flush();
     await _snapshotStore.write(
       _graph,
@@ -282,8 +300,29 @@ class TaeraePersistentGraph {
 
   /// Replaces current state from [json] and stores a compact snapshot.
   Future<void> restoreFromJson(Map<String, Object?> json) async {
+    _throwIfClosed();
     _graph = TaeraeGraph.fromJson(json);
     await checkpoint();
+  }
+
+  /// Closes this instance after flushing persistence state.
+  ///
+  /// When [checkpointOnClose] is `true`, this writes a compact snapshot and
+  /// truncates the log. When `false`, pending log writes are still flushed, but
+  /// log compaction is skipped.
+  Future<void> close({bool checkpointOnClose = true}) async {
+    if (_isClosed) {
+      return;
+    }
+
+    if (checkpointOnClose) {
+      await checkpoint();
+    } else {
+      await _log.flush();
+      _operationsSinceFlush = 0;
+    }
+
+    _isClosed = true;
   }
 
   Future<void> _commitMutation(
@@ -344,6 +383,12 @@ class TaeraePersistentGraph {
         'durability.flushEveryNOperations',
         'Must be > 0 when using everyNOperations flush policy.',
       );
+    }
+  }
+
+  void _throwIfClosed() {
+    if (_isClosed) {
+      throw StateError('Cannot mutate a closed TaeraePersistentGraph.');
     }
   }
 }

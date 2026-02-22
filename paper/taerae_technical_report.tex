@@ -1,0 +1,354 @@
+\documentclass[11pt]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{amsmath}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage{xurl}
+\usepackage{hyperref}
+\emergencystretch=2em
+\hbadness=10000
+
+\title{Taerae Technical Report:\\An Embedded Graph Runtime for Dart and Flutter}
+\author{Taerae Contributors}
+\date{February 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+This report documents the current implementation of \texttt{taerae}, an embedded graph runtime for Dart and Flutter. The codebase provides: (i) an in-memory directed graph engine with immutable node/edge models and indexed lookup paths, (ii) a file-backed durability layer using append-only newline-delimited JSON (NDJSON) logs and periodic snapshots, (iii) GraphRAG extension interfaces with a baseline in-memory cosine-similarity index, and (iv) Flutter adapters for state management and visualization. The report is evidence-constrained to repository artifacts at the time of writing: source code, tests, benchmark harnesses, and project metadata. We include reproducible benchmark and coverage artifacts generated in this workspace, and explicitly separate measured results from broader production claims. In this report, ``GraphRAG-ready'' means interface-level composability and baseline implementations, not a production-validated retrieval quality claim.
+\end{abstract}
+
+\section{Introduction}
+\texttt{taerae} targets application-embedded graph workloads where developers need graph modeling and traversal without a separate graph server process \cite{taerae_repo}. The project is organized as two packages: \texttt{taerae\_core} (pure Dart runtime) \cite{taerae_core_pkg} and \texttt{flutter\_taerae} (Flutter integration and re-exports) \cite{flutter_taerae_pkg}. Package manifests specify Dart SDK constraint \texttt{3.11.x or newer} and Flutter SDK \texttt{>=3.3.0}, aligning with current Dart/Flutter toolchains \cite{dart_docs,flutter_docs}.
+
+The system explicitly combines graph execution and local durability. The durability layer uses write-ahead style mutation logging plus snapshots, a standard approach for recovery-oriented storage engines \cite{mohan1992aries}. In parallel, the code exposes retrieval-augmented interfaces (embedder, vector index, chunker, filter, reranker) so graph state can be connected to retrieval workflows related to RAG-style pipelines \cite{lewis2020retrieval}.
+
+This report focuses on implemented behavior. It does not claim distributed graph database properties, ANN index performance, or benchmark throughput numbers that are not present in checked-in artifacts.
+
+\section{Related Work and Positioning}
+Taerae's durability path (operation log + checkpointed snapshots) follows established recovery patterns used in database systems \cite{mohan1992aries}. The implementation target is different from server-grade graph databases: Taerae is embedded and application-local, whereas many graph systems prioritize remote query serving, distributed storage, and cluster operations.
+
+For retrieval-augmented pipelines, Taerae is positioned after foundational RAG work \cite{lewis2020retrieval} and subsequent studies on retrieval faithfulness, retrieval strategy, and evaluation frameworks \cite{he2023rethinking,gao2023rag_survey,sarthi2024raptor,es2023ragas}. These works motivate why retrieval quality, ranking, and evidence grounding should be treated as first-class concerns when integrating language models with external memory.
+
+Graph-centric RAG methods further inform Taerae's API direction. Recent systems construct or exploit graph structure explicitly during retrieval and reasoning, including GraphRAG \cite{edge2024graphrag}, graph-text retrieval for question answering \cite{he2024gretriever}, memory-oriented graph retrieval \cite{gutierrez2024hipporag}, lightweight graph retrieval pipelines \cite{guo2024lightrag}, path-constrained retrieval \cite{chen2025pathrag}, structure-aware retrieval \cite{li2024structrag}, and graph-oriented retrieval orchestration \cite{zhang2024gor}.
+
+Adjacent graph+LLM literature explores symbolic-structural reasoning and integration patterns beyond classic vector retrieval \cite{luo2023rog,pan2023integrating_graphs_llms}. Compared with these lines, Taerae currently contributes an embedded runtime substrate (graph operations, persistence, and pluggable retrieval interfaces) rather than a task-specific SOTA reasoning model or a fixed production GraphRAG recipe.
+
+All newly added related-work citations in this section are sourced from arXiv and include explicit arXiv identifiers in the bibliography.
+
+\section{System Design}
+\subsection{Repository-Level Architecture}
+The codebase is layered:
+\begin{enumerate}[leftmargin=*]
+  \item \textbf{Core runtime (\texttt{taerae\_core})}: graph models, in-memory graph engine, persistence, and GraphRAG interfaces.
+  \item \textbf{Flutter package (\texttt{flutter\_taerae})}: \texttt{ChangeNotifier}-based controller, graph visualization widget, and platform-channel wrapper.
+  \item \textbf{Examples (\texttt{examples/})}: domain scenarios (city commute, delivery ops, social recommendation, personal-notes GraphRAG) plus minimal usage samples.
+\end{enumerate}
+
+\begin{figure}[htbp]
+\centering
+\renewcommand{\arraystretch}{1.15}
+\begin{tabular}{c c c c c}
+\fbox{\parbox{0.16\linewidth}{\centering Application\\(Dart + Flutter)}} &
+$\rightarrow$ &
+\fbox{\parbox{0.19\linewidth}{\centering \texttt{TaeraeGraph}\\CRUD + traversal}} &
+$\leftrightarrow$ &
+\fbox{\parbox{0.19\linewidth}{\centering \texttt{Persistent}\\\texttt{Graph}\\snapshot + NDJSON log}} \\
+& & $\downarrow$ & & \\
+& & \fbox{\parbox{0.24\linewidth}{\centering GraphRAG adapters\\embedder, index,\\filter, reranker}} & &
+\end{tabular}
+\caption{High-level runtime data flow in the current architecture.}
+\label{fig:runtime-architecture}
+\end{figure}
+
+\subsection{Data and State Model}
+The core data model consists of immutable \texttt{TaeraeNode} and \texttt{TaeraeEdge}. Constructor and JSON parsing paths enforce non-empty IDs and JSON shape validation. Property values are recursively frozen to prevent accidental mutation after construction.
+
+The mutable execution object is \texttt{TaeraeGraph}, which maintains:
+\begin{enumerate}[leftmargin=*]
+  \item node and edge maps keyed by ID,
+  \item outgoing/incoming adjacency maps by node ID,
+  \item label index (\texttt{label -> node IDs}),
+  \item exact property index (\texttt{property key -> hashed value -> node IDs}).
+\end{enumerate}
+This indexing design supports direct CRUD with synchronous query APIs such as \texttt{nodeById}, \texttt{nodesByLabel}, and \texttt{nodesWhereProperty}. It also supports neighborhood and path queries via \texttt{neighbors} and \texttt{shortestPathBfs}.
+
+\subsection{Persistence and Recovery Layout}
+\texttt{TaeraePersistentGraph} stores data in two files under an application directory:
+\begin{enumerate}[leftmargin=*]
+  \item snapshot file (default \texttt{graph.snapshot.json}),
+  \item append-only operation log (default \texttt{graph.log.ndjson}).
+\end{enumerate}
+Startup reads snapshot first, then replays the operation log into memory. Checkpointing writes a full snapshot and truncates the log.
+
+\section{Core Algorithms}
+\subsection{Graph Mutation and Index Maintenance}
+\texttt{upsertNode} and \texttt{upsertEdge} follow update-or-insert semantics. When updating:
+\begin{enumerate}[leftmargin=*]
+  \item old index entries are removed,
+  \item new immutable objects are inserted,
+  \item affected indexes are rebuilt.
+\end{enumerate}
+Removing a node also removes all incident edges and cleans adjacency/index state.
+
+\subsection{Traversal and Path Search}
+\texttt{shortestPathBfs} performs directed BFS from \texttt{startId} over outgoing edges and reconstructs the first shortest path to \texttt{endId}. Optional \texttt{edgeType} filtering constrains traversal. If start/end nodes are missing or unreachable, the method returns \texttt{null}.
+
+\subsection{Property Equality Semantics}
+Property index keys are wrapped in an internal value-key object that performs deep equality and deep hashing for nested \texttt{List}/\texttt{Map} values. This allows exact matching of structured property values (for example, nested map equality) while retaining hash-map lookup behavior.
+
+\subsection{GraphRAG Retrieval Pipeline}
+\texttt{TaeraeGraphRag} composes three required components (\texttt{graph}, \texttt{embedder}, \texttt{vectorIndex}) and optional components (\texttt{chunker}, \texttt{filter}, \texttt{reranker}).
+The retrieval flow is:
+\begin{enumerate}[leftmargin=*]
+  \item embed query text,
+  \item retrieve up to \texttt{topK * 4} vector hits,
+  \item map chunk IDs back to node IDs and keep each node's best score,
+  \item apply optional metadata filter,
+  \item expand neighborhood context by hop-limited BFS over graph adjacency,
+  \item apply optional reranker.
+\end{enumerate}
+
+\subsection{Vector Similarity Baseline}
+The default index (\texttt{TaeraeInMemoryVectorIndex}) stores one vector per ID and computes cosine similarity:
+\begin{equation}
+\mathrm{sim}(q, v)=\frac{q \cdot v}{\|q\|_2 \|v\|_2}.
+\end{equation}
+Search performs exact scoring over all indexed vectors and sorts descending by score (with ID tie-break), so complexity is linear in indexed vectors for scoring and superlinear in sort cost.
+
+\subsection{Complexity Summary}
+\begin{table}[htbp]
+\centering
+\begin{tabular}{@{}l p{0.62\linewidth}@{}}
+\toprule
+Operation & Asymptotic complexity in the current implementation \\
+\midrule
+\texttt{upsertNode} & \(O(L+P)\) index updates (\(L\): labels, \(P\): properties) \\
+\texttt{upsertEdge} & \(O(1)\) average map/set operations plus endpoint checks \\
+\texttt{removeNode} & \(O(L+P+d_{in}+d_{out})\) including incident-edge cleanup \\
+\texttt{nodesByLabel} & \(O(k)\) for matched nodes \\
+\texttt{nodesWhereProperty} & \(O(k)\) for matched nodes \\
+\texttt{shortestPathBfs} & \(O(|V|+|E|)\) worst-case traversal \\
+\texttt{vector search} & \(O(Nd) + O(N\log N)\) for exact cosine scoring and full sorting \\
+\bottomrule
+\end{tabular}
+\caption{Algorithmic profile derived from source-level implementation.}
+\label{tab:complexity}
+\end{table}
+
+\section{Durability \& Recovery}
+\subsection{Threat Model and Non-Goals}
+The implemented durability path is best interpreted under a single-process, local-file threat model:
+\begin{enumerate}[leftmargin=*]
+  \item process crash or abrupt termination during append/checkpoint,
+  \item malformed or truncated trailing log line due to interrupted write,
+  \item local restart with replay from last valid snapshot and log suffix.
+\end{enumerate}
+Current code and tests do \emph{not} claim guarantees for concurrent multi-writer access, distributed consensus, or Byzantine storage behavior.
+
+\subsection{Operation Logging}
+Every persistent mutation is serialized as a typed operation (\texttt{upsert\_node}, \texttt{remove\_node}, \texttt{upsert\_edge}, \texttt{remove\_edge}, \texttt{clear}) and appended as one NDJSON line. The log reader parses line-by-line and can optionally tolerate a malformed trailing line if the file does not end with a line terminator (crash-truncated append case).
+
+\subsection{Durability Policy Controls}
+The persistence layer exposes four knobs:
+\begin{enumerate}[leftmargin=*]
+  \item \texttt{logFlushPolicy}: \texttt{immediate}, \texttt{everyNOperations}, \texttt{onCheckpoint},
+  \item \texttt{flushEveryNOperations}: batch size for periodic flush,
+  \item \texttt{writeAtomicityPolicy}: \texttt{writeAhead} vs \texttt{inMemoryFirst},
+  \item \texttt{atomicSnapshotWrite}: temp-file + rename snapshot commit.
+\end{enumerate}
+These settings define the write-latency vs crash-window trade-off in local storage behavior.
+
+\subsection{Checkpoint and Close Semantics}
+\texttt{checkpoint()} forces log flush, writes snapshot, truncates log, and resets pending counters. \texttt{close(checkpointOnClose: false)} skips snapshot compaction but still flushes the log, enabling later replay on reopen.
+
+\subsection{Evidence from Tests}
+Persistence tests cover:
+\begin{enumerate}[leftmargin=*]
+  \item replay correctness and snapshot round-trip,
+  \item auto-checkpoint log compaction behavior,
+  \item strict vs tolerant truncated-log recovery,
+  \item durability option validation and closed-state mutation rejection.
+\end{enumerate}
+This test set exercises nominal and defensive branches in durability and recovery code paths.
+
+\section{Flutter Integration}
+\subsection{Controller Layer}
+\texttt{TaeraeGraphController} wraps \texttt{TaeraeGraph} with \texttt{ChangeNotifier}. Mutation methods invalidate cached node/edge lists and notify listeners. Query methods delegate directly to core graph APIs. Import/export is provided as both map and string JSON interfaces.
+
+\subsection{Visualization Layer}
+\texttt{TaeraeGraphView} renders graph state via:
+\begin{enumerate}[leftmargin=*]
+  \item \texttt{AnimatedBuilder} subscribed to controller updates,
+  \item deterministic circular layout fallback (or custom layout callback),
+  \item edge painting with arrowheads and labels,
+  \item node/edge hit-testing callbacks,
+  \item optional pan/zoom through \texttt{InteractiveViewer}.
+\end{enumerate}
+
+\subsection{Platform Plugin Surface}
+The plugin wrapper currently exposes one method-channel API for platform-version reporting. Android, iOS, macOS, Linux, and Web stubs report platform versions. No graph operations are delegated through native channels at this stage.
+
+\section{Evaluation}
+\subsection{Evaluation Goals and Setup}
+This evaluation targets three questions: (i) throughput and latency of core graph operations, (ii) scaling behavior as graph size increases, and (iii) test/coverage evidence for implemented code paths. All measurements were generated locally during manuscript preparation from repository scripts and tests.
+
+Primary benchmark environment (from run metadata):
+\begin{enumerate}[leftmargin=*]
+  \item macOS 15.7.4 (ARM64), 10 logical CPU cores,
+  \item Dart SDK 3.11.0,
+  \item benchmark driver: \texttt{paper\_benchmark.dart} in the core benchmark directory.
+\end{enumerate}
+
+\subsection{Benchmark Methodology}
+The extended benchmark run used:
+\begin{quote}
+\small
+\texttt{dart run benchmark/paper\_benchmark.dart}\\
+\texttt{--presets=generic,social,delivery,notes\_rag}\\
+\texttt{--sizes=1000,5000,10000 --warmup-runs=1 --repeat=3}\\
+\texttt{--lookup-queries=10000 --path-queries=500}
+\normalsize
+\end{quote}
+and produced artifacts under the \texttt{arxiv\_report\_20260222\_full} benchmark results directory.
+
+For each metric, throughput is computed as:
+\begin{equation}
+\mathrm{ops/s}=\frac{N_{\mathrm{ops}}}{T_{\mathrm{sec}}},
+\end{equation}
+and average per-operation latency is:
+\begin{equation}
+\mu s/\mathrm{op}=\frac{10^6}{\mathrm{ops/s}}.
+\end{equation}
+Run-to-run variability is summarized with the coefficient of variation:
+\begin{equation}
+\mathrm{CV}(\%)=100 \cdot \frac{\sigma}{\mu},
+\end{equation}
+where \(\mu\) and \(\sigma\) are the sample mean and sample standard deviation across measured runs.
+
+\begin{figure}[htbp]
+\centering
+\renewcommand{\arraystretch}{1.1}
+\begin{tabular}{c c c c c}
+\fbox{\parbox{0.15\linewidth}{\centering Preset\\generator}} &
+$\rightarrow$ &
+\fbox{\parbox{0.18\linewidth}{\centering Warmup +\\measured runs}} &
+$\rightarrow$ &
+\fbox{\parbox{0.20\linewidth}{\centering Metric reducer\\(mean, p50, p95, stddev)}} \\
+& & & & $\downarrow$ \\
+& & & & \fbox{\parbox{0.22\linewidth}{\centering \texttt{results.json}, \texttt{summary.csv}, \texttt{REPORT.md}}}
+\end{tabular}
+\caption{Benchmark data pipeline used for reproducible artifact generation.}
+\label{fig:benchmark-pipeline}
+\end{figure}
+
+\subsection{Benchmark Results}
+Table~\ref{tab:bench-5000} summarizes key metrics at 5k nodes per preset (three measured runs each).
+\begin{table}[htbp]
+\centering
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+Preset & upsertNode & upsertEdge & nodeById & path query \\
+\midrule
+generic & 255{,}749 & 1{,}117{,}305 & 9{,}047{,}390 & 1{,}269 \\
+social & 567{,}632 & 1{,}479{,}535 & 6{,}522{,}060 & 674 \\
+delivery & 442{,}191 & 1{,}143{,}105 & 6{,}746{,}734 & 2{,}858 \\
+notes\_rag & 376{,}718 & 1{,}165{,}578 & 6{,}012{,}800 & 1{,}692 \\
+\bottomrule
+\end{tabular}
+\caption{Mean throughput (ops/s) at 5k nodes. Path query denotes each preset's shortest-path metric.}
+\label{tab:bench-5000}
+\end{table}
+
+Scaling behavior differs by operation class (Table~\ref{tab:scaling}). In this workload harness, \texttt{nodeById} throughput increases with larger graph sizes, while shortest-path throughput decreases as expected with deeper traversal frontiers and larger reachable subgraphs.
+\begin{table}[htbp]
+\centering
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+Preset & nodeById@1k & nodeById@10k & ratio & shortest ratio \\
+\midrule
+generic & 3{,}725{,}981 & 14{,}079{,}242 & \(3.78\times\) & \(0.09\times\) \\
+social & 2{,}060{,}239 & 11{,}274{,}345 & \(5.47\times\) & \(0.08\times\) \\
+delivery & 2{,}056{,}398 & 11{,}339{,}977 & \(5.51\times\) & \(0.09\times\) \\
+notes\_rag & 2{,}053{,}841 & 11{,}060{,}564 & \(5.39\times\) & \(0.09\times\) \\
+\bottomrule
+\end{tabular}
+\caption{Scaling summary. Ratio = nodeById(10k)/nodeById(1k). Shortest ratio = shortest-path(10k)/shortest-path(1k).}
+\label{tab:scaling}
+\end{table}
+
+Variability is generally low for point lookups and higher for neighbor-heavy workloads. At 5k nodes, generic shortest-path BFS has CV \(=0.46\%\). In contrast, notes\_rag and social outgoing-neighborhood metrics show higher variance, with CV values of \(18.76\%\) and \(15.77\%\), respectively.
+
+\subsection{Test Suite and Coverage Evidence}
+From \texttt{taerae\_core/test} and \texttt{flutter\_taerae/test}, this workspace currently includes:
+\begin{enumerate}[leftmargin=*]
+  \item 58 core \texttt{test(...)} cases,
+  \item 11 Flutter \texttt{test(...)} cases,
+  \item 3 Flutter \texttt{testWidgets(...)} cases.
+\end{enumerate}
+Total: 72 Dart/Flutter test cases executed in this analysis run.
+
+Line coverage is reported with \texttt{lcov} as:
+\begin{equation}
+\mathrm{Coverage}(\%)=100 \cdot \frac{LH}{LF},
+\end{equation}
+where \(LH\) is covered lines and \(LF\) is instrumented lines.
+
+\begin{table}[htbp]
+\centering
+\begin{tabular}{@{}lrrr@{}}
+\toprule
+Package & LH & LF & Coverage \\
+\midrule
+taerae\_core & 791 & 791 & 100.00\% \\
+flutter\_taerae & 281 & 297 & 94.61\% \\
+combined & 1{,}072 & 1{,}088 & 98.53\% \\
+\bottomrule
+\end{tabular}
+\caption{Line coverage from local \texttt{lcov.info} artifacts generated in this run.}
+\label{tab:coverage-package}
+\end{table}
+
+Coverage gaps are concentrated in the Flutter visualization layer. \texttt{taerae\_graph\_view.dart} is 183/199 lines (91.96\%), while other measured Flutter library files are 100\%. Remaining uncovered branches are mainly rendering and interaction edge paths rather than core graph correctness logic.
+
+\subsection{Artifact Inventory and Reproducibility}
+The evaluation in this report references two concrete output directories:
+\begin{enumerate}[leftmargin=*]
+  \item \texttt{arxiv\_report\_20260222} (earlier small run),
+  \item \texttt{arxiv\_report\_20260222\_full} (extended run with 4 presets, 3 sizes, 3 repeats).
+\end{enumerate}
+Each directory includes \texttt{results.json}, \texttt{summary.csv}, and \texttt{REPORT.md}. Re-running with the same CLI arguments and seed policy reproduces the same measurement procedure and artifact schema, though absolute throughput values may vary across machines and thermal states.
+
+\section{Limitations}
+\begin{enumerate}[leftmargin=*]
+  \item \textbf{Single-machine benchmarking}: despite multiple presets and graph sizes, all measurements come from one local machine and should not be interpreted as cross-platform performance guarantees.
+  \item \textbf{Exact vector search only}: \texttt{TaeraeInMemoryVectorIndex} performs full scans and full sort; no ANN backend or persisted vector index is provided.
+  \item \textbf{No end-task GraphRAG quality study}: current evidence shows interface and pipeline execution behavior, not downstream task quality metrics.
+  \item \textbf{Single-process semantics}: there is no explicit transaction, lock manager, or multi-writer coordination API.
+  \item \textbf{Web persistence gap}: persistence relies on \texttt{dart:io} and is not available in Flutter Web runtime paths.
+  \item \textbf{Minimal plugin channel}: native plugin surface is limited to platform-version smoke checks.
+  \item \textbf{CI path mismatch}: workflow jobs still reference \texttt{taerae\_flutter} in places, while the actual directory is \texttt{flutter\_taerae}; this can affect default CI evidence collection.
+\end{enumerate}
+
+\section{Future Work}
+\begin{enumerate}[leftmargin=*]
+  \item Add automated benchmark publishing (store measured benchmark artifacts per commit/tag).
+  \item Introduce pluggable ANN and persisted vector backends for larger retrieval workloads.
+  \item Add transactional APIs and explicit concurrency semantics for multi-isolate or multi-client mutation scenarios.
+  \item Provide web-compatible persistence adapters for browser deployments.
+  \item Expand Flutter/native integration beyond platform-version checks (for example, storage and instrumentation hooks).
+  \item Add fault-injection and crash-recovery integration tests that exercise OS-level interruption points.
+\end{enumerate}
+
+\section{Conclusion}
+\texttt{taerae} already implements a coherent embedded graph stack: indexed in-memory graph operations, configurable local durability with replayable logs and snapshots, GraphRAG extension points, and Flutter-first controller/view integration. Current evidence includes benchmark artifacts across four workload presets and three graph scales, plus high line coverage in core runtime paths. The remaining gap to publication-grade systems evidence is broader multi-machine benchmarking, richer GraphRAG end-task evaluation, and continuously published performance and fault-injection traces across releases.
+
+\bibliographystyle{plain}
+\bibliography{references}
+
+\end{document}

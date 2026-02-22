@@ -55,6 +55,10 @@ class _GraphCrudHomePageState extends State<GraphCrudHomePage> {
   String _platformVersion = 'loading...';
   String _status = 'Ready';
 
+  final List<String> _quickRecentNodeIds = <String>[];
+  String _quickEdgeType = 'RELATED_TO';
+  int _quickSequence = 1;
+
   bool _searchActive = false;
   String _searchSummary = 'No search executed.';
   List<TaeraeNode> _searchResults = const <TaeraeNode>[];
@@ -68,6 +72,7 @@ class _GraphCrudHomePageState extends State<GraphCrudHomePage> {
   void initState() {
     super.initState();
     _seedGraph();
+    _quickRecentNodeIds.addAll(const <String>['alice', 'bob', 'seoul']);
     unawaited(_loadPlatformVersion());
   }
 
@@ -108,6 +113,122 @@ class _GraphCrudHomePageState extends State<GraphCrudHomePage> {
       )
       ..upsertEdge('knows', 'alice', 'bob', type: 'KNOWS')
       ..upsertEdge('lives_in', 'alice', 'seoul', type: 'LIVES_IN');
+  }
+
+  void _resetStarterGraph() {
+    _controller.clear();
+    _seedGraph();
+    _quickRecentNodeIds
+      ..clear()
+      ..addAll(const <String>['alice', 'bob', 'seoul']);
+    _quickSequence = 1;
+    setState(() {
+      _status = 'Reset to starter graph.';
+      _refreshSearchResultsIfNeeded();
+    });
+  }
+
+  void _addQuickPerson() {
+    _addQuickNode(
+      baseId: 'person',
+      label: 'Person',
+      properties: <String, Object?>{'name': 'Person $_quickSequence'},
+    );
+  }
+
+  void _addQuickCity() {
+    _addQuickNode(
+      baseId: 'city',
+      label: 'City',
+      properties: <String, Object?>{'name': 'City $_quickSequence'},
+    );
+  }
+
+  void _addQuickProject() {
+    _addQuickNode(
+      baseId: 'project',
+      label: 'Project',
+      properties: <String, Object?>{'name': 'Project $_quickSequence'},
+    );
+  }
+
+  void _addQuickNode({
+    required String baseId,
+    required String label,
+    required Map<String, Object?> properties,
+  }) {
+    final String id = _nextNodeId(baseId);
+    _controller.upsertNode(id, labels: <String>[label], properties: properties);
+    _quickRecentNodeIds
+      ..remove(id)
+      ..add(id);
+    _quickSequence += 1;
+
+    setState(() {
+      _status = 'Added $label node "$id".';
+      _refreshSearchResultsIfNeeded();
+    });
+  }
+
+  String _nextNodeId(String baseId) {
+    String candidate = '${baseId}_$_quickSequence';
+    while (_controller.containsNode(candidate)) {
+      _quickSequence += 1;
+      candidate = '${baseId}_$_quickSequence';
+    }
+    return candidate;
+  }
+
+  String _nextEdgeId(String baseId) {
+    int suffix = 1;
+    String candidate = '${baseId}_$suffix';
+    while (_controller.containsEdge(candidate)) {
+      suffix += 1;
+      candidate = '${baseId}_$suffix';
+    }
+    return candidate;
+  }
+
+  void _connectRecentNodes() {
+    final List<String> recent = _quickRecentNodeIds
+        .where(_controller.containsNode)
+        .toList(growable: false);
+
+    String from;
+    String to;
+    if (recent.length >= 2) {
+      from = recent[recent.length - 2];
+      to = recent.last;
+    } else {
+      final List<TaeraeNode> nodes = _controller.nodes;
+      if (nodes.length < 2) {
+        setState(() {
+          _status = 'Need at least two nodes to create an edge.';
+        });
+        return;
+      }
+      from = nodes[nodes.length - 2].id;
+      to = nodes.last.id;
+    }
+
+    final String edgeType = _quickEdgeType;
+    final String edgeId = _nextEdgeId('${edgeType.toLowerCase()}_${from}_$to');
+    _controller.upsertEdge(edgeId, from, to, type: edgeType);
+    setState(() {
+      _status = 'Connected "$from" -> "$to" with type "$edgeType".';
+      _refreshSearchResultsIfNeeded();
+    });
+  }
+
+  Future<void> _copyGraphJson() async {
+    final String json = _controller.exportToJsonString(pretty: true);
+    await Clipboard.setData(ClipboardData(text: json));
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _status = 'Graph JSON copied to clipboard.';
+    });
   }
 
   Future<void> _loadPlatformVersion() async {
@@ -522,6 +643,149 @@ class _GraphCrudHomePageState extends State<GraphCrudHomePage> {
     );
   }
 
+  Widget _buildQuickStartCard(List<TaeraeNode> nodes, List<TaeraeEdge> edges) {
+    return _SectionCard(
+      title: 'Start Here',
+      description:
+          'Use one-click actions first. Use advanced CRUD when needed.',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text('Current: ${nodes.length} node(s), ${edges.length} edge(s).'),
+          const SizedBox(height: 8),
+          const Text('1. Add nodes with templates.'),
+          const Text('2. Connect the latest two nodes.'),
+          const Text('3. Tap graph nodes/edges to load editors automatically.'),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: <Widget>[
+              FilledButton.icon(
+                onPressed: _addQuickPerson,
+                icon: const Icon(Icons.person_add_alt_1),
+                label: const Text('Add Person'),
+              ),
+              FilledButton.icon(
+                onPressed: _addQuickCity,
+                icon: const Icon(Icons.location_city),
+                label: const Text('Add City'),
+              ),
+              FilledButton.icon(
+                onPressed: _addQuickProject,
+                icon: const Icon(Icons.work_outline),
+                label: const Text('Add Project'),
+              ),
+              FilledButton.tonalIcon(
+                onPressed: _resetStarterGraph,
+                icon: const Icon(Icons.refresh),
+                label: const Text('Reset Starter'),
+              ),
+              OutlinedButton.icon(
+                onPressed: _copyGraphJson,
+                icon: const Icon(Icons.copy_all),
+                label: const Text('Copy JSON'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: <Widget>[
+              SizedBox(
+                width: 220,
+                child: DropdownButtonFormField<String>(
+                  initialValue: _quickEdgeType,
+                  decoration: const InputDecoration(
+                    labelText: 'Quick edge type',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: const <DropdownMenuItem<String>>[
+                    DropdownMenuItem<String>(
+                      value: 'RELATED_TO',
+                      child: Text('RELATED_TO'),
+                    ),
+                    DropdownMenuItem<String>(
+                      value: 'KNOWS',
+                      child: Text('KNOWS'),
+                    ),
+                    DropdownMenuItem<String>(
+                      value: 'LIVES_IN',
+                      child: Text('LIVES_IN'),
+                    ),
+                    DropdownMenuItem<String>(
+                      value: 'WORKS_WITH',
+                      child: Text('WORKS_WITH'),
+                    ),
+                  ],
+                  onChanged: (String? value) {
+                    if (value == null || value == _quickEdgeType) {
+                      return;
+                    }
+                    setState(() {
+                      _quickEdgeType = value;
+                    });
+                  },
+                ),
+              ),
+              FilledButton.icon(
+                onPressed: _connectRecentNodes,
+                icon: const Icon(Icons.hub_outlined),
+                label: const Text('Connect Latest Two'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuickSnapshot(List<TaeraeNode> nodes, List<TaeraeEdge> edges) {
+    return _SectionCard(
+      title: 'Quick Snapshot',
+      description:
+          'Latest graph elements. Tap in visualizer for detail editing.',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text('Recent nodes: ${_quickRecentNodeIds.join(', ')}'),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: nodes
+                .take(8)
+                .map(
+                  (TaeraeNode node) => InputChip(
+                    label: Text(node.id),
+                    onPressed: () => _loadNodeToEditor(node),
+                  ),
+                )
+                .toList(growable: false),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: edges
+                .take(8)
+                .map(
+                  (TaeraeEdge edge) => InputChip(
+                    label: Text(
+                      '${edge.from} -[${edge.type ?? 'EDGE'}]-> ${edge.to}',
+                    ),
+                    onPressed: () => _loadEdgeToEditor(edge),
+                  ),
+                )
+                .toList(growable: false),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildVisualizer() {
     return _SectionCard(
       title: 'Graph Visualizer',
@@ -856,30 +1120,65 @@ class _GraphCrudHomePageState extends State<GraphCrudHomePage> {
     );
   }
 
+  Widget _buildQuickStartTab(List<TaeraeNode> nodes, List<TaeraeEdge> edges) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          _buildQuickStartCard(nodes, edges),
+          _buildOverview(nodes, edges),
+          _buildVisualizer(),
+          _buildQuickSnapshot(nodes, edges),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAdvancedTab(List<TaeraeNode> nodes, List<TaeraeEdge> edges) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          _buildOverview(nodes, edges),
+          _buildVisualizer(),
+          _buildNodeCrud(),
+          _buildSearchPanel(),
+          _buildEdgeCrud(),
+          _buildGraphSnapshot(nodes, edges),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Taerae CRUD Example')),
-      body: AnimatedBuilder(
-        animation: _controller,
-        builder: (BuildContext context, Widget? child) {
-          final List<TaeraeNode> nodes = _controller.nodes;
-          final List<TaeraeEdge> edges = _controller.edges;
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Taerae Example'),
+          bottom: const TabBar(
+            tabs: <Tab>[
+              Tab(text: 'Quick Start', icon: Icon(Icons.flash_on_outlined)),
+              Tab(text: 'Advanced CRUD', icon: Icon(Icons.tune_outlined)),
+            ],
+          ),
+        ),
+        body: AnimatedBuilder(
+          animation: _controller,
+          builder: (BuildContext context, Widget? child) {
+            final List<TaeraeNode> nodes = _controller.nodes;
+            final List<TaeraeEdge> edges = _controller.edges;
+            return TabBarView(
               children: <Widget>[
-                _buildOverview(nodes, edges),
-                _buildVisualizer(),
-                _buildNodeCrud(),
-                _buildSearchPanel(),
-                _buildEdgeCrud(),
-                _buildGraphSnapshot(nodes, edges),
+                _buildQuickStartTab(nodes, edges),
+                _buildAdvancedTab(nodes, edges),
               ],
-            ),
-          );
-        },
+            );
+          },
+        ),
       ),
     );
   }
