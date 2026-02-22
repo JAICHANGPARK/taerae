@@ -32,37 +32,21 @@ class TaeraeGraphLog {
 
   /// Reads all logged operations in order.
   Future<List<TaeraeGraphOperation>> readAll() async {
-    if (!await file.exists()) {
-      return const <TaeraeGraphOperation>[];
-    }
-
-    final List<String> lines = await file.readAsLines();
     final List<TaeraeGraphOperation> operations = <TaeraeGraphOperation>[];
-
-    for (int i = 0; i < lines.length; i++) {
-      final String line = lines[i].trim();
-      if (line.isEmpty) {
-        continue;
-      }
-
-      final Object? decoded = jsonDecode(line);
-      operations.add(
-        TaeraeGraphOperation.fromJson(
-          _readJsonMap(decoded, 'log line ${i + 1}'),
-        ),
-      );
+    await for (final TaeraeGraphOperation operation in _operationStream()) {
+      operations.add(operation);
     }
-
     return List<TaeraeGraphOperation>.unmodifiable(operations);
   }
 
   /// Replays all operations into [graph] and returns replayed operation count.
   Future<int> replayInto(TaeraeGraph graph) async {
-    final List<TaeraeGraphOperation> operations = await readAll();
-    for (final TaeraeGraphOperation operation in operations) {
+    int replayedCount = 0;
+    await for (final TaeraeGraphOperation operation in _operationStream()) {
       operation.applyTo(graph);
+      replayedCount += 1;
     }
-    return operations.length;
+    return replayedCount;
   }
 
   /// Truncates the log file.
@@ -79,6 +63,31 @@ class TaeraeGraphLog {
       await handle.flush();
     } finally {
       await handle.close();
+    }
+  }
+
+  Stream<TaeraeGraphOperation> _operationStream() async* {
+    if (!await file.exists()) {
+      return;
+    }
+
+    final Stream<String> lines = file
+        .openRead()
+        .transform(utf8.decoder)
+        .transform(const LineSplitter());
+
+    int lineNumber = 0;
+    await for (final String rawLine in lines) {
+      lineNumber += 1;
+      final String line = rawLine.trim();
+      if (line.isEmpty) {
+        continue;
+      }
+
+      final Object? decoded = jsonDecode(line);
+      yield TaeraeGraphOperation.fromJson(
+        _readJsonMap(decoded, 'log line $lineNumber'),
+      );
     }
   }
 

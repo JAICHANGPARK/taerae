@@ -48,9 +48,14 @@ void main() {
         'n1',
         properties: const <String, Object?>{'name': 'Terry'},
       );
+      final TaeraeNode labelsOnly = graph.upsertNode(
+        'n1',
+        labels: const <String>['Human'],
+      );
 
       expect(updated.labels, equals(const <String>{'Person'}));
       expect(updated.properties['name'], equals('Terry'));
+      expect(labelsOnly.properties['name'], equals('Terry'));
     });
 
     test('upsertEdge validates endpoints exist', () {

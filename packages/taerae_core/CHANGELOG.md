@@ -1,3 +1,9 @@
+## 0.1.1
+
+- Optimize `TaeraeGraphLog` replay/read paths to stream NDJSON operations.
+- Add broad branch and validation tests for graph core, persistence, and GraphRAG.
+- Raise `lib/` statement coverage to 100% with additional regression coverage.
+
 ## 0.1.0
 
 - Introduced immutable graph models: `TaeraeNode` and `TaeraeEdge`.

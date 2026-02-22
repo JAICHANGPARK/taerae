@@ -17,15 +17,17 @@ class TaeraeGraphController extends ChangeNotifier {
   }
 
   TaeraeGraph _graph;
+  List<TaeraeNode>? _cachedNodes;
+  List<TaeraeEdge>? _cachedEdges;
 
   /// Immutable copy of the underlying graph.
   TaeraeGraph get graph => _graph.copy();
 
   /// Current nodes sorted by id.
-  List<TaeraeNode> get nodes => _readNodes(_graph.toJson());
+  List<TaeraeNode> get nodes => _cachedNodes ??= _readNodes(_graph.toJson());
 
   /// Current edges sorted by id.
-  List<TaeraeEdge> get edges => _readEdges(_graph.toJson());
+  List<TaeraeEdge> get edges => _cachedEdges ??= _readEdges(_graph.toJson());
 
   /// Whether a node with [id] exists.
   bool containsNode(String id) => _graph.containsNode(id);
@@ -86,6 +88,7 @@ class TaeraeGraphController extends ChangeNotifier {
       labels: labels,
       properties: properties,
     );
+    _invalidateDerivedCaches();
     notifyListeners();
     return node;
   }
@@ -94,6 +97,7 @@ class TaeraeGraphController extends ChangeNotifier {
   bool removeNode(String id) {
     final bool removed = _graph.removeNode(id);
     if (removed) {
+      _invalidateDerivedCaches();
       notifyListeners();
     }
     return removed;
@@ -114,6 +118,7 @@ class TaeraeGraphController extends ChangeNotifier {
       type: type,
       properties: properties,
     );
+    _invalidateDerivedCaches();
     notifyListeners();
     return edge;
   }
@@ -122,6 +127,7 @@ class TaeraeGraphController extends ChangeNotifier {
   bool removeEdge(String id) {
     final bool removed = _graph.removeEdge(id);
     if (removed) {
+      _invalidateDerivedCaches();
       notifyListeners();
     }
     return removed;
@@ -140,12 +146,14 @@ class TaeraeGraphController extends ChangeNotifier {
     }
 
     _graph.clear();
+    _invalidateDerivedCaches();
     notifyListeners();
   }
 
   /// Replaces the current graph and notifies listeners.
   void replaceGraph(TaeraeGraph graph) {
     _graph = graph.copy();
+    _invalidateDerivedCaches();
     notifyListeners();
   }
 
@@ -164,6 +172,7 @@ class TaeraeGraphController extends ChangeNotifier {
   /// Imports graph state from JSON and notifies listeners.
   void importFromJson(Map<String, Object?> json) {
     _graph = TaeraeGraph.fromJson(json);
+    _invalidateDerivedCaches();
     notifyListeners();
   }
 
@@ -171,6 +180,11 @@ class TaeraeGraphController extends ChangeNotifier {
   void importFromJsonString(String source) {
     final Object? decoded = jsonDecode(source);
     importFromJson(_readJsonMap(decoded, 'source'));
+  }
+
+  void _invalidateDerivedCaches() {
+    _cachedNodes = null;
+    _cachedEdges = null;
   }
 
   static List<TaeraeNode> _readNodes(Map<String, Object?> json) {
@@ -206,11 +220,7 @@ class TaeraeGraphController extends ChangeNotifier {
 
     final Map<String, Object?> map = <String, Object?>{};
     for (final MapEntry<Object?, Object?> entry in value.entries) {
-      final Object? rawKey = entry.key;
-      if (rawKey is! String) {
-        throw FormatException('Expected all keys in "$key" to be strings.');
-      }
-      map[rawKey] = entry.value;
+      map[entry.key as String] = entry.value;
     }
     return map;
   }

@@ -69,6 +69,27 @@ void main() {
         equals(TaeraeGraphOperationType.upsertNode),
       );
     });
+
+    test('handles missing file, empty lines, and malformed entries', () async {
+      final Directory tempDir = await Directory.systemTemp.createTemp(
+        'taerae-log-invalid-',
+      );
+      addTearDown(() => tempDir.delete(recursive: true));
+
+      final File logFile = File(
+        tempDir.uri.resolve('graph.log.ndjson').toFilePath(),
+      );
+      final TaeraeGraphLog log = TaeraeGraphLog(logFile);
+
+      expect(await log.readAll(), isEmpty);
+
+      await log.ensureExists();
+      await logFile.writeAsString('\n[]\n');
+      await expectLater(log.readAll(), throwsFormatException);
+
+      await logFile.writeAsString('\n{"":1}\n');
+      expect(log.replayInto(TaeraeGraph()), throwsFormatException);
+    });
   });
 
   group('TaeraeGraphSnapshotStore', () {
@@ -118,6 +139,68 @@ void main() {
 
       expect(await snapshotFile.exists(), isTrue);
       expect(await File('${snapshotFile.path}.tmp').exists(), isFalse);
+    });
+
+    test(
+      'supports non-atomic writes and overwriting existing snapshots',
+      () async {
+        final Directory tempDir = await Directory.systemTemp.createTemp(
+          'taerae-snapshot-overwrite-',
+        );
+        addTearDown(() => tempDir.delete(recursive: true));
+
+        final File snapshotFile = File(
+          tempDir.uri.resolve('graph.snapshot.json').toFilePath(),
+        );
+        final TaeraeGraphSnapshotStore store = TaeraeGraphSnapshotStore(
+          snapshotFile,
+        );
+
+        await store.write(TaeraeGraph()..upsertNode('n1'), atomicWrite: false);
+        await store.write(TaeraeGraph()..upsertNode('n2'));
+
+        final TaeraeGraph restored = await store.readOrEmpty();
+        expect(restored.containsNode('n2'), isTrue);
+        expect(restored.containsNode('n1'), isFalse);
+      },
+    );
+
+    test('reads empty, legacy, and invalid snapshot payloads', () async {
+      final Directory tempDir = await Directory.systemTemp.createTemp(
+        'taerae-snapshot-parse-',
+      );
+      addTearDown(() => tempDir.delete(recursive: true));
+
+      final File snapshotFile = File(
+        tempDir.uri.resolve('graph.snapshot.json').toFilePath(),
+      );
+      final TaeraeGraphSnapshotStore store = TaeraeGraphSnapshotStore(
+        snapshotFile,
+      );
+
+      // Empty file returns an empty graph.
+      await snapshotFile.writeAsString('');
+      expect((await store.readOrEmpty()).toJson()['nodes'], isEmpty);
+
+      // Legacy shape is accepted.
+      await snapshotFile.writeAsString(
+        '{"nodes":[{"id":"legacy"}],"edges":[]}',
+      );
+      expect((await store.readOrEmpty()).containsNode('legacy'), isTrue);
+
+      // Unsupported format is rejected.
+      await snapshotFile.writeAsString(
+        '{"format":"other","graph":{"nodes":[],"edges":[]}}',
+      );
+      await expectLater(store.readOrEmpty(), throwsFormatException);
+
+      // Root must be a map.
+      await snapshotFile.writeAsString('[]');
+      await expectLater(store.readOrEmpty(), throwsFormatException);
+
+      // Root keys must be non-empty strings.
+      await snapshotFile.writeAsString('{"":1}');
+      await expectLater(store.readOrEmpty(), throwsFormatException);
     });
   });
 
@@ -217,6 +300,128 @@ void main() {
         ),
         throwsArgumentError,
       );
+    });
+
+    test(
+      'validates autoCheckpointEvery and exposes defensive graph copy',
+      () async {
+        final Directory storeDir = await Directory.systemTemp.createTemp(
+          'taerae-open-validate-',
+        );
+        addTearDown(() => storeDir.delete(recursive: true));
+
+        expect(
+          () => TaeraePersistentGraph.open(
+            directory: storeDir,
+            autoCheckpointEvery: -1,
+          ),
+          throwsArgumentError,
+        );
+
+        final TaeraePersistentGraph graph = await TaeraePersistentGraph.open(
+          directory: storeDir,
+          autoCheckpointEvery: 0,
+        );
+        await graph.upsertNode(
+          'n1',
+          labels: const <String>['Person'],
+          properties: const <String, Object?>{'name': 'A'},
+        );
+
+        final TaeraeGraph copy = graph.graph..removeNode('n1');
+        expect(copy.containsNode('n1'), isFalse);
+        expect(graph.nodesByLabel('Person').single.id, equals('n1'));
+        expect(graph.snapshotPath, contains('graph.snapshot.json'));
+        expect(graph.logPath, contains('graph.log.ndjson'));
+      },
+    );
+
+    test('covers remove/clear branches and restoreFromJson', () async {
+      final Directory storeDir = await Directory.systemTemp.createTemp(
+        'taerae-remove-clear-',
+      );
+      addTearDown(() => storeDir.delete(recursive: true));
+
+      final TaeraePersistentGraph graph = await TaeraePersistentGraph.open(
+        directory: storeDir,
+        autoCheckpointEvery: 0,
+      );
+
+      expect(await graph.removeNode('missing'), isFalse);
+      expect(await graph.removeEdge('missing'), isFalse);
+      await graph.clear(); // No-op on empty graph.
+
+      await graph.upsertNode(
+        'n1',
+        labels: const <String>['User'],
+        properties: const <String, Object?>{'name': 'Alice'},
+      );
+      await graph.upsertNode('n1');
+      expect(graph.nodesByLabel('User').single.id, equals('n1'));
+      expect(graph.nodesWhereProperty('name', 'Alice').single.id, equals('n1'));
+
+      await graph.upsertNode('n2');
+      await graph.upsertEdge(
+        'e1',
+        'n1',
+        'n2',
+        type: 'KNOWS',
+        properties: const <String, Object?>{'since': 2026},
+      );
+      await graph.upsertEdge('e1', 'n1', 'n2');
+      expect(
+        graph.shortestPathBfs('n1', 'n2'),
+        equals(const <String>['n1', 'n2']),
+      );
+
+      expect(
+        () => graph.upsertEdge('bad-source', 'missing', 'n2'),
+        throwsStateError,
+      );
+      expect(
+        () => graph.upsertEdge('bad-target', 'n1', 'missing'),
+        throwsStateError,
+      );
+
+      expect(await graph.removeEdge('e1'), isTrue);
+      expect(await graph.removeNode('n2'), isTrue);
+      await graph.clear();
+      expect(graph.toJson()['nodes'], isEmpty);
+
+      await graph.restoreFromJson(<String, Object?>{
+        'nodes': <Object?>[
+          <String, Object?>{
+            'id': 'r1',
+            'labels': <Object?>['Restored'],
+          },
+        ],
+        'edges': <Object?>[],
+      });
+      expect(graph.nodesByLabel('Restored').single.id, equals('r1'));
+    });
+
+    test('supports onCheckpoint flush policy', () async {
+      final Directory storeDir = await Directory.systemTemp.createTemp(
+        'taerae-on-checkpoint-',
+      );
+      addTearDown(() => storeDir.delete(recursive: true));
+
+      final TaeraePersistentGraph graph = await TaeraePersistentGraph.open(
+        directory: storeDir,
+        autoCheckpointEvery: 0,
+        durability: const TaeraeDurabilityOptions(
+          logFlushPolicy: TaeraeLogFlushPolicy.onCheckpoint,
+        ),
+      );
+
+      await graph.upsertNode('n1');
+      await graph.upsertNode('n2');
+      final String beforeCheckpoint = await File(graph.logPath).readAsString();
+      expect(beforeCheckpoint.trim().isNotEmpty, isTrue);
+
+      await graph.checkpoint();
+      final String afterCheckpoint = await File(graph.logPath).readAsString();
+      expect(afterCheckpoint.trim(), isEmpty);
     });
   });
 }

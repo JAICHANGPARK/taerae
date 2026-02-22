@@ -2,6 +2,24 @@ import 'package:taerae_core/taerae_core.dart';
 import 'package:test/test.dart';
 
 void main() {
+  group('TaeraeFixedSizeTextChunker', () {
+    test('validates maxChunkLength and splits normalized text', () {
+      expect(
+        () => const TaeraeFixedSizeTextChunker(maxChunkLength: 0).split('abc'),
+        throwsArgumentError,
+      );
+
+      const TaeraeFixedSizeTextChunker chunker = TaeraeFixedSizeTextChunker(
+        maxChunkLength: 2,
+      );
+      expect(
+        chunker.split('  abcde  '),
+        equals(const <String>['ab', 'cd', 'e']),
+      );
+      expect(chunker.split('   '), isEmpty);
+    });
+  });
+
   group('TaeraeInMemoryVectorIndex', () {
     test('returns top results by cosine similarity', () async {
       final TaeraeInMemoryVectorIndex index = TaeraeInMemoryVectorIndex();
@@ -180,6 +198,112 @@ void main() {
       final List<TaeraeGraphRagHit> hits = await rag.retrieve('query', topK: 2);
       expect(hits.map((TaeraeGraphRagHit hit) => hit.node.id), ['b', 'a']);
     });
+
+    test('validates index and retrieve arguments', () async {
+      final TaeraeGraph graph = TaeraeGraph()..upsertNode('n1');
+      final _FakeEmbedder embedder = _FakeEmbedder(<String, List<double>>{
+        'ok': const <double>[1, 0],
+        'query': const <double>[1, 0],
+      });
+      final TaeraeGraphRag rag = TaeraeGraphRag(
+        graph: graph,
+        embedder: embedder,
+        vectorIndex: TaeraeInMemoryVectorIndex(),
+      );
+
+      expect(() => rag.indexNodeText('missing', 'ok'), throwsStateError);
+      expect(() => rag.indexNodeText('n1', '   '), throwsArgumentError);
+      expect(
+        () => rag.retrieve('query', neighborhoodHops: -1),
+        throwsArgumentError,
+      );
+      expect(await rag.retrieve('query', topK: 0), isEmpty);
+    });
+
+    test(
+      'removes previous chunk entries when re-indexing the same node',
+      () async {
+        final TaeraeGraph graph = TaeraeGraph()..upsertNode('n1');
+        final _FakeEmbedder embedder = _FakeEmbedder(<String, List<double>>{
+          'a': const <double>[1, 0],
+          'b': const <double>[0.9, 0.1],
+          'c': const <double>[0.8, 0.2],
+          'query': const <double>[1, 0],
+        });
+        final TaeraeInMemoryVectorIndex index = TaeraeInMemoryVectorIndex();
+        final TaeraeGraphRag rag = TaeraeGraphRag(
+          graph: graph,
+          embedder: embedder,
+          vectorIndex: index,
+          chunker: const _PipeChunker(),
+        );
+
+        await rag.indexNodeText('n1', 'a|b');
+        expect(
+          index.embeddings.keys.any((String key) => key.contains('::chunk::')),
+          isTrue,
+        );
+
+        await rag.indexNodeText('n1', 'c');
+        expect(
+          index.embeddings.keys.where(
+            (String key) => key.contains('::chunk::'),
+          ),
+          isEmpty,
+        );
+      },
+    );
+
+    test('resolves chunk-like IDs returned by vector search', () async {
+      final TaeraeGraph graph = TaeraeGraph()
+        ..upsertNode('a')
+        ..upsertNode('b');
+      final TaeraeGraphRag rag = TaeraeGraphRag(
+        graph: graph,
+        embedder: _FakeEmbedder(<String, List<double>>{
+          'query': const <double>[1, 0],
+        }),
+        vectorIndex: _StaticVectorIndex(<TaeraeScoredNode>[
+          const TaeraeScoredNode(nodeId: 'b::chunk::0', score: 0.5),
+          const TaeraeScoredNode(nodeId: 'a::chunk::1', score: 0.5),
+        ]),
+      );
+
+      final List<TaeraeGraphRagHit> hits = await rag.retrieve('query', topK: 2);
+      expect(
+        hits.map((TaeraeGraphRagHit hit) => hit.node.id),
+        equals(const <String>['a', 'b']),
+      );
+    });
+
+    test('filter and hit copyWith support override semantics', () {
+      final TaeraeNode baseNode = TaeraeNode(
+        id: 'n1',
+        labels: const <String>['Doc'],
+        properties: const <String, Object?>{'topic': 'ai'},
+      );
+
+      final TaeraeGraphRagFilter filter = const TaeraeGraphRagFilter(
+        requiredLabels: <String>{'Doc', 'Extra'},
+        requiredProperties: <String, Object?>{'topic': 'food'},
+      );
+      expect(filter.matches(baseNode), isFalse);
+
+      final TaeraeGraphRagHit hit = TaeraeGraphRagHit(
+        node: baseNode,
+        score: 0.1,
+        neighborhood: const <TaeraeNode>[],
+      );
+      final TaeraeGraphRagHit updated = hit.copyWith(score: 0.9);
+      expect(updated.node.id, equals('n1'));
+      expect(updated.score, equals(0.9));
+      expect(updated.neighborhood, isEmpty);
+
+      final TaeraeGraphRagHit scoreFallback = hit.copyWith(
+        node: TaeraeNode(id: 'n2'),
+      );
+      expect(scoreFallback.score, equals(0.1));
+    });
   });
 }
 
@@ -215,4 +339,27 @@ class _ReverseReranker implements TaeraeGraphReranker {
   ) async {
     return hits.reversed.toList(growable: false);
   }
+}
+
+class _StaticVectorIndex implements TaeraeVectorIndex {
+  _StaticVectorIndex(this._results);
+
+  final List<TaeraeScoredNode> _results;
+
+  @override
+  Future<void> clear() async {}
+
+  @override
+  Future<void> remove(String nodeId) async {}
+
+  @override
+  Future<List<TaeraeScoredNode>> search(
+    List<double> queryEmbedding, {
+    int topK = 5,
+  }) async {
+    return _results.take(topK).toList(growable: false);
+  }
+
+  @override
+  Future<void> upsert(String nodeId, List<double> embedding) async {}
 }
