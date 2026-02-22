@@ -24,11 +24,56 @@ This report documents the current implementation of \texttt{taerae}, an embedded
 \end{abstract}
 
 \section{Introduction}
-\texttt{taerae} targets application-embedded graph workloads where developers need graph modeling and traversal without a separate graph server process \cite{taerae_repo}. The project is organized as two packages: \texttt{taerae\_core} (pure Dart runtime) \cite{taerae_core_pkg} and \texttt{flutter\_taerae} (Flutter integration and re-exports) \cite{flutter_taerae_pkg}. Package manifests specify Dart SDK constraint \texttt{3.11.x or newer} and Flutter SDK \texttt{>=3.3.0}, aligning with current Dart/Flutter toolchains \cite{dart_docs,flutter_docs}.
+\texttt{taerae} targets application-embedded graph workloads where developers need graph modeling and traversal without a separate graph server process \cite{taerae_repo}. The project is organized as two packages: \texttt{taerae} (pure Dart runtime, source directory: \texttt{packages/taerae\_core}) \cite{taerae_core_pkg} and \texttt{flutter\_taerae} (Flutter integration and re-exports) \cite{flutter_taerae_pkg}. Package manifests specify Dart SDK constraint \texttt{3.11.x or newer} and Flutter SDK \texttt{>=3.3.0}, aligning with current Dart/Flutter toolchains \cite{dart_docs,flutter_docs}.
 
 The system explicitly combines graph execution and local durability. The durability layer uses write-ahead style mutation logging plus snapshots, a standard approach for recovery-oriented storage engines \cite{mohan1992aries}. In parallel, the code exposes retrieval-augmented interfaces (embedder, vector index, chunker, filter, reranker) so graph state can be connected to retrieval workflows related to RAG-style pipelines \cite{lewis2020retrieval}.
 
 This report focuses on implemented behavior. It does not claim distributed graph database properties, ANN index performance, or benchmark throughput numbers that are not present in checked-in artifacts.
+
+\section{Core Design Philosophy}
+Taerae's core design is guided by application-embedded graph workloads rather than server-cluster replacement. The philosophy is intentionally narrow and implementation-oriented:
+\begin{enumerate}[leftmargin=*]
+  \item \textbf{Embedded-first runtime boundary}: graph execution should run inside the same runtime boundary as application logic, minimizing network and service coupling.
+  \item \textbf{Local-first durability with explicit trade-offs}: durability is provided through operation logs and snapshots with policy knobs that make latency/recovery trade-offs explicit.
+  \item \textbf{Deterministic and defensive semantics}: immutable graph entities, strict JSON validation, and reproducible index/traversal behavior are prioritized over implicit mutation.
+  \item \textbf{Composable retrieval interfaces}: GraphRAG adapters are interfaces and pluggable components, allowing domain-specific embedding/index/reranking strategies.
+  \item \textbf{Scope discipline}: distributed consensus, multi-writer coordination, and server-grade cluster guarantees are treated as out-of-scope for the current runtime.
+\end{enumerate}
+
+Table~\ref{tab:philosophy-mapping} maps each principle to concrete implementation mechanisms and intended user-facing outcomes.
+
+\begin{table}[htbp]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}p{0.25\linewidth} p{0.33\linewidth} p{0.34\linewidth}@{}}
+\toprule
+Principle & Current implementation mechanism & Intended outcome \\
+\midrule
+Embedded-first runtime &
+\texttt{TaeraeGraph} in-process APIs and Flutter-side \texttt{TaeraeGraphController} and \texttt{TaeraeGraphView}. &
+Lower integration friction for app teams building graph features inside Dart/Flutter projects. \\
+
+Local-first durability &
+NDJSON operation log, snapshot checkpointing, and tunable flush/atomicity options in \texttt{TaeraePersistentGraph}. &
+Recoverable local state with explicit control of write latency vs crash window. \\
+
+Deterministic semantics &
+Immutable node/edge value objects, deep-frozen properties, strict parse/validation paths, and indexed lookups. &
+Predictable behavior and safer state reasoning under iterative app development. \\
+
+Composable GraphRAG &
+Required interfaces (embedder/index) plus optional filter/reranker/chunker pipeline hooks. &
+Flexible retrieval composition without hard-coding one model stack or one ranking strategy. \\
+
+Scope discipline &
+Single-process assumptions and explicit limitations on distributed guarantees. &
+Clear expectation setting for adopters and reduced architectural ambiguity. \\
+\bottomrule
+\end{tabular}
+\caption{Core design philosophy mapped to implementation choices and expected value.}
+\label{tab:philosophy-mapping}
+\end{table}
 
 \section{Related Work and Positioning}
 Taerae's durability path (operation log + checkpointed snapshots) follows established recovery patterns used in database systems \cite{mohan1992aries}. The implementation target is different from server-grade graph databases: Taerae is embedded and application-local, whereas many graph systems prioritize remote query serving, distributed storage, and cluster operations.
@@ -41,11 +86,90 @@ Adjacent graph+LLM literature explores symbolic-structural reasoning and integra
 
 All newly added related-work citations in this section are sourced from arXiv and include explicit arXiv identifiers in the bibliography.
 
+\subsection{Market GraphDB Survey and Differentiation}
+To strengthen practical positioning, Table~\ref{tab:market-graphdb} summarizes widely used graph databases from official vendor or project documentation, including deployment model and query interface as of 2026-02-22. The ``operational default'' and ``Taerae differentiation angle'' columns are explicit inferences from cited documentation.
+
+\begin{table*}[htbp]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}p{0.13\textwidth} p{0.21\textwidth} p{0.20\textwidth} p{0.15\textwidth} p{0.21\textwidth}@{}}
+\toprule
+System & Deployment model (official docs) & Query / graph interface (official docs) & Operational default (inference) & Taerae differentiation angle \\
+\midrule
+Neo4j &
+Self-managed (local, cloud, container, Kubernetes) and fully managed AuraDB \cite{neo4j_docs,neo4j_auradb}. &
+Cypher query language over property-graph workflows \cite{neo4j_cypher}. &
+External DB service (self-managed or managed). &
+Taerae keeps graph runtime inside Dart/Flutter process for local-first application embedding. \\
+
+Amazon Neptune &
+Fully managed AWS graph database service \cite{neptune_intro}. &
+Supports Gremlin and openCypher for property graphs, and SPARQL for RDF \cite{neptune_intro}. &
+Managed cloud graph endpoint on AWS. &
+Taerae avoids mandatory networked service operation for app-local graph features. \\
+
+Azure Cosmos DB (Gremlin) &
+Fully managed database service with API-based access \cite{cosmos_gremlin_docs}. &
+Gremlin API support based on Apache TinkerPop \cite{cosmos_gremlin_docs}. &
+Managed cloud account + API access pattern. &
+Taerae emphasizes direct in-process graph API calls without remote API dependency. \\
+
+TigerGraph &
+Self-managed TigerGraph DB and fully managed Savanna cloud \cite{tigergraph_cloud_ref}. &
+GSQL with openCypher integration in GSQL tooling \cite{tigergraph_gsql_opencypher}. &
+Server or managed cluster deployment for graph analytics workloads. &
+Taerae trades distributed execution scale for lightweight embedded operation and Flutter integration. \\
+
+ArangoDB &
+Available as ArangoDB software and managed ArangoGraph cloud service \cite{arangodb_cloud}. &
+Native multi-model engine (key-value, document, graph) with AQL graph traversal queries \cite{arangodb_data_models,arangodb_traversal_docs}. &
+General-purpose multi-model DB deployment. &
+Taerae focuses narrower on embedded graph runtime and app-local persistence behavior. \\
+
+JanusGraph &
+Distributed graph database architecture on scalable storage and index backends \cite{janusgraph_home}. &
+Gremlin traversal language via Apache TinkerPop integration \cite{janusgraph_gremlin}. &
+Distributed backend-oriented graph service. &
+Taerae targets single-process local runtime simplicity instead of distributed storage orchestration. \\
+
+Dgraph &
+Distributed graph database architecture \cite{dgraph_overview}. &
+Dual query surfaces: GraphQL and DQL \cite{dgraph_query_layers}. &
+Distributed service deployment for graph APIs. &
+Taerae targets embedded runtime composition for app logic and local durability. \\
+
+Memgraph &
+Real-time in-memory graph database product positioning \cite{memgraph_overview}. &
+Cypher-compatible query workflow \cite{memgraph_cypher}. &
+High-throughput graph DB server process. &
+Taerae prioritizes in-app embedding and Dart-native API ergonomics over server-centric operation. \\
+
+Kuzu &
+Embedded graph database explicitly designed for query and analytics in process \cite{kuzu_docs}. &
+Cypher query language support documented in official docs \cite{kuzu_docs}. &
+Embedded local engine. &
+Closest market neighbor to Taerae's embedding model; Taerae's differentiator is Dart/Flutter-native API and local durability/GraphRAG integration in the same package stack. \\
+\bottomrule
+\end{tabular}
+\caption{Market graph database landscape from official documentation (accessed 2026-02-22).}
+\label{tab:market-graphdb}
+\end{table*}
+
+\subsection{Taerae Positioning Statement}
+Within this landscape, Taerae's core differentiators are:
+\begin{enumerate}[leftmargin=*]
+  \item \textbf{Dart/Flutter-native embedding}: graph execution is designed to run in the same runtime boundary as application code and UI state (\texttt{TaeraeGraphController}, \texttt{TaeraeGraphView}) \cite{taerae_repo,flutter_taerae_pkg}.
+  \item \textbf{Local-first durability controls}: NDJSON operation log + snapshot checkpoints with explicit durability policies are exposed as application-level knobs rather than external DB administration procedures \cite{taerae_core_pkg,mohan1992aries}.
+  \item \textbf{Graph + retrieval composition in one stack}: GraphRAG adapters (embedder, vector index, filter, reranker) are co-located with graph runtime APIs, reducing integration boundary count for on-device or edge workflows \cite{taerae_core_pkg}.
+  \item \textbf{Scope clarity}: Taerae does not claim distributed graph-cluster guarantees and is positioned for embedded application workloads rather than server-cluster replacement.
+\end{enumerate}
+
 \section{System Design}
 \subsection{Repository-Level Architecture}
 The codebase is layered:
 \begin{enumerate}[leftmargin=*]
-  \item \textbf{Core runtime (\texttt{taerae\_core})}: graph models, in-memory graph engine, persistence, and GraphRAG interfaces.
+  \item \textbf{Core runtime (\texttt{taerae})}: graph models, in-memory graph engine, persistence, and GraphRAG interfaces.
   \item \textbf{Flutter package (\texttt{flutter\_taerae})}: \texttt{ChangeNotifier}-based controller, graph visualization widget, and platform-channel wrapper.
   \item \textbf{Examples (\texttt{examples/})}: domain scenarios (city commute, delivery ops, social recommendation, personal-notes GraphRAG) plus minimal usage samples.
 \end{enumerate}
