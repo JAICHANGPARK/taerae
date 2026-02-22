@@ -1,0 +1,21 @@
+name: taerae_core
+description: Local-first embedded graph database core for Dart with WAL+snapshot durability and GraphRAG extension points.
+version: 0.1.0
+homepage: https://github.com/taerae-dev/taerae
+repository: https://github.com/taerae-dev/taerae
+issue_tracker: https://github.com/taerae-dev/taerae/issues
+topics:
+  - graph
+  - graph-database
+  - embedded
+  - offline-first
+  - graphrag
+
+environment:
+  sdk: ^3.11.0
+
+dependencies:
+
+dev_dependencies:
+  lints: ^6.0.0
+  test: ^1.25.6

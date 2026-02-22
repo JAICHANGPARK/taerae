@@ -1,0 +1,11 @@
+name: basic_graph_queries
+description: Basic in-memory graph query example for taerae_core.
+version: 0.0.1
+publish_to: none
+
+environment:
+  sdk: ^3.11.0
+
+dependencies:
+  taerae_core:
+    path: ../../packages/taerae_core

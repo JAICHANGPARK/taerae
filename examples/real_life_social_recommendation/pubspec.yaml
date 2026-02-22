@@ -1,0 +1,11 @@
+name: real_life_social_recommendation
+description: Real-life friend recommendation graph example.
+version: 0.0.1
+publish_to: none
+
+environment:
+  sdk: ^3.11.0
+
+dependencies:
+  taerae_core:
+    path: ../../packages/taerae_core

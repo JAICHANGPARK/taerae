@@ -1,0 +1,46 @@
+name: Test
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test-core:
+    name: Test taerae_core
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/taerae_core
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Dart
+        uses: dart-lang/setup-dart@v1
+
+      - name: Install dependencies
+        run: dart pub get
+
+      - name: Test
+        run: dart test
+
+  test-flutter:
+    name: Test taerae_flutter
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/taerae_flutter
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Test
+        run: flutter test

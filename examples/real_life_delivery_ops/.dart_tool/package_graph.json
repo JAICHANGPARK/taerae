@@ -1,0 +1,21 @@
+{
+  "roots": [
+    "real_life_delivery_ops"
+  ],
+  "packages": [
+    {
+      "name": "real_life_delivery_ops",
+      "version": "0.0.1",
+      "dependencies": [
+        "taerae_core"
+      ],
+      "devDependencies": []
+    },
+    {
+      "name": "taerae_core",
+      "version": "0.1.0",
+      "dependencies": []
+    }
+  ],
+  "configVersion": 1
+}

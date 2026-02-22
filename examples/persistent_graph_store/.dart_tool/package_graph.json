@@ -1,0 +1,21 @@
+{
+  "roots": [
+    "persistent_graph_store"
+  ],
+  "packages": [
+    {
+      "name": "persistent_graph_store",
+      "version": "0.0.1",
+      "dependencies": [
+        "taerae_core"
+      ],
+      "devDependencies": []
+    },
+    {
+      "name": "taerae_core",
+      "version": "0.1.0",
+      "dependencies": []
+    }
+  ],
+  "configVersion": 1
+}

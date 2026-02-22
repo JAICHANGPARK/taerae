@@ -1,0 +1,102 @@
+import 'dart:convert';
+import 'dart:io';
+
+import '../taerae_graph.dart';
+import 'taerae_graph_operation.dart';
+
+/// Append-only NDJSON log for graph mutation operations.
+class TaeraeGraphLog {
+  /// Creates a log backed by [file].
+  TaeraeGraphLog(this.file);
+
+  /// Log file path.
+  final File file;
+
+  /// Ensures the parent directory and file exist.
+  Future<void> ensureExists() async {
+    await file.parent.create(recursive: true);
+    if (!await file.exists()) {
+      await file.writeAsString('', flush: true);
+    }
+  }
+
+  /// Appends one operation to the end of the log.
+  Future<void> append(
+    TaeraeGraphOperation operation, {
+    bool flush = true,
+  }) async {
+    await ensureExists();
+    final String line = jsonEncode(operation.toJson());
+    await file.writeAsString('$line\n', mode: FileMode.append, flush: flush);
+  }
+
+  /// Reads all logged operations in order.
+  Future<List<TaeraeGraphOperation>> readAll() async {
+    if (!await file.exists()) {
+      return const <TaeraeGraphOperation>[];
+    }
+
+    final List<String> lines = await file.readAsLines();
+    final List<TaeraeGraphOperation> operations = <TaeraeGraphOperation>[];
+
+    for (int i = 0; i < lines.length; i++) {
+      final String line = lines[i].trim();
+      if (line.isEmpty) {
+        continue;
+      }
+
+      final Object? decoded = jsonDecode(line);
+      operations.add(
+        TaeraeGraphOperation.fromJson(
+          _readJsonMap(decoded, 'log line ${i + 1}'),
+        ),
+      );
+    }
+
+    return List<TaeraeGraphOperation>.unmodifiable(operations);
+  }
+
+  /// Replays all operations into [graph] and returns replayed operation count.
+  Future<int> replayInto(TaeraeGraph graph) async {
+    final List<TaeraeGraphOperation> operations = await readAll();
+    for (final TaeraeGraphOperation operation in operations) {
+      operation.applyTo(graph);
+    }
+    return operations.length;
+  }
+
+  /// Truncates the log file.
+  Future<void> truncate() async {
+    await ensureExists();
+    await file.writeAsString('', flush: true);
+  }
+
+  /// Flushes pending buffered writes to storage.
+  Future<void> flush() async {
+    await ensureExists();
+    final RandomAccessFile handle = await file.open(mode: FileMode.append);
+    try {
+      await handle.flush();
+    } finally {
+      await handle.close();
+    }
+  }
+
+  static Map<String, Object?> _readJsonMap(Object? value, String fieldName) {
+    if (value is! Map<Object?, Object?>) {
+      throw FormatException('Expected "$fieldName" to be a JSON object.');
+    }
+
+    final Map<String, Object?> map = <String, Object?>{};
+    for (final MapEntry<Object?, Object?> entry in value.entries) {
+      final Object? key = entry.key;
+      if (key is! String || key.isEmpty) {
+        throw FormatException(
+          'Expected keys in "$fieldName" to be non-empty strings.',
+        );
+      }
+      map[key] = entry.value;
+    }
+    return map;
+  }
+}

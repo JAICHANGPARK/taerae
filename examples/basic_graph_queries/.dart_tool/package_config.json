@@ -1,0 +1,22 @@
+{
+  "configVersion": 2,
+  "packages": [
+    {
+      "name": "taerae_core",
+      "rootUri": "../../../packages/taerae_core",
+      "packageUri": "lib/",
+      "languageVersion": "3.11"
+    },
+    {
+      "name": "basic_graph_queries",
+      "rootUri": "../",
+      "packageUri": "lib/",
+      "languageVersion": "3.11"
+    }
+  ],
+  "generator": "pub",
+  "generatorVersion": "3.11.0",
+  "flutterRoot": "file:///Users/jaichang/development/flutter",
+  "flutterVersion": "3.41.2",
+  "pubCache": "file:///Users/jaichang/.pub-cache"
+}

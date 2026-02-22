@@ -1,0 +1,11 @@
+name: persistent_graph_store
+description: File persistence example with append-only log + snapshot.
+version: 0.0.1
+publish_to: none
+
+environment:
+  sdk: ^3.11.0
+
+dependencies:
+  taerae_core:
+    path: ../../packages/taerae_core

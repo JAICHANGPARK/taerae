@@ -1,0 +1,21 @@
+{
+  "roots": [
+    "basic_graph_queries"
+  ],
+  "packages": [
+    {
+      "name": "basic_graph_queries",
+      "version": "0.0.1",
+      "dependencies": [
+        "taerae_core"
+      ],
+      "devDependencies": []
+    },
+    {
+      "name": "taerae_core",
+      "version": "0.1.0",
+      "dependencies": []
+    }
+  ],
+  "configVersion": 1
+}

@@ -1,0 +1,3 @@
+dependency_overrides:
+  taerae_core:
+    path: ../taerae_core
